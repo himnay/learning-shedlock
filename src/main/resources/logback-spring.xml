@@ -1,22 +1,26 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <configuration>
 
-    <!-- Spring Boot default base configuration (console + file from application.yml) -->
     <include resource="org/springframework/boot/logging/logback/defaults.xml"/>
 
-    <springProperty scope="context" name="APP_NAME"  source="spring.application.name"  defaultValue="learning-shedlock"/>
-    <springProperty scope="context" name="LOG_PATH"  source="logging.file.path"         defaultValue="logs"/>
-    <springProperty scope="context" name="LOG_LEVEL" source="logging.level.root"         defaultValue="INFO"/>
+    <springProperty scope="context" name="APP_NAME"  source="spring.application.name" defaultValue="learning-shedlock"/>
+    <springProperty scope="context" name="LOG_PATH"  source="logging.file.path"        defaultValue="logs"/>
+    <springProperty scope="context" name="LOG_LEVEL" source="logging.level.root"        defaultValue="INFO"/>
 
-    <!-- ── Console Appender ───────────────────────────────────────────────── -->
+    <property name="CONSOLE_PATTERN"
+              value="%clr(%d{yyyy-MM-dd HH:mm:ss.SSS}){faint} %clr(%5p) %clr(${PID:- }){magenta} %clr(---){faint} %clr([%15.15t]){faint} %clr(%-40.40logger{39}){cyan} %clr(:){faint} %X{traceId:- } %m%n%wEx"/>
+    <property name="FILE_PATTERN"
+              value="%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} traceId=%X{traceId:-} spanId=%X{spanId:-} - %msg%n"/>
+
+    <!-- ── Console ────────────────────────────────────────────────────────── -->
     <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
         <encoder>
-            <pattern>%clr(%d{yyyy-MM-dd HH:mm:ss.SSS}){faint} %clr(%5p) %clr(${PID:- }){magenta} %clr(---){faint} %clr([%15.15t]){faint} %clr(%-40.40logger{39}){cyan} %clr(:){faint} %m%n%wEx</pattern>
+            <pattern>${CONSOLE_PATTERN}</pattern>
             <charset>UTF-8</charset>
         </encoder>
     </appender>
 
-    <!-- ── Rolling File Appender ──────────────────────────────────────────── -->
+    <!-- ── Rolling File ───────────────────────────────────────────────────── -->
     <appender name="FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
         <file>${LOG_PATH}/${APP_NAME}.log</file>
         <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
@@ -26,40 +30,67 @@
             <totalSizeCap>1GB</totalSizeCap>
         </rollingPolicy>
         <encoder>
-            <pattern>%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n</pattern>
+            <pattern>${FILE_PATTERN}</pattern>
             <charset>UTF-8</charset>
         </encoder>
     </appender>
 
-    <!-- ── Package-level log levels ───────────────────────────────────────── -->
-    <logger name="com.org.shedlock"                          level="DEBUG"/>
-    <logger name="net.javacrumbs.shedlock"                  level="DEBUG"/>
-    <logger name="org.springframework.scheduling"           level="DEBUG"/>
-    <logger name="org.flywaydb"                             level="INFO"/>
-    <logger name="org.springframework.jdbc"                 level="WARN"/>
-    <logger name="com.zaxxer.hikari"                        level="WARN"/>
+    <!-- ── Async File (non-blocking) ──────────────────────────────────────── -->
+    <appender name="ASYNC_FILE" class="ch.qos.logback.classic.AsyncAppender">
+        <queueSize>512</queueSize>
+        <discardingThreshold>0</discardingThreshold>
+        <includeCallerData>false</includeCallerData>
+        <appender-ref ref="FILE"/>
+    </appender>
 
-    <!-- ── local profile — verbose console, no file ───────────────────────── -->
+    <!-- ── Error-only File ────────────────────────────────────────────────── -->
+    <appender name="ERROR_FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>${LOG_PATH}/${APP_NAME}-error.log</file>
+        <filter class="ch.qos.logback.classic.filter.ThresholdFilter">
+            <level>ERROR</level>
+        </filter>
+        <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
+            <fileNamePattern>${LOG_PATH}/${APP_NAME}-error-%d{yyyy-MM-dd}.%i.log.gz</fileNamePattern>
+            <maxFileSize>10MB</maxFileSize>
+            <maxHistory>60</maxHistory>
+            <totalSizeCap>500MB</totalSizeCap>
+        </rollingPolicy>
+        <encoder>
+            <pattern>${FILE_PATTERN}</pattern>
+            <charset>UTF-8</charset>
+        </encoder>
+    </appender>
+
+    <!-- ── Package log levels ─────────────────────────────────────────────── -->
+    <logger name="com.org.shedlock"                level="DEBUG"/>
+    <logger name="net.javacrumbs.shedlock"         level="DEBUG"/>
+    <logger name="org.springframework.scheduling"  level="DEBUG"/>
+    <logger name="org.flywaydb"                    level="INFO"/>
+    <logger name="org.springframework.jdbc"        level="WARN"/>
+    <logger name="com.zaxxer.hikari"               level="WARN"/>
+
+    <!-- ── local — verbose console only ──────────────────────────────────── -->
     <springProfile name="local">
         <root level="INFO">
             <appender-ref ref="CONSOLE"/>
         </root>
     </springProfile>
 
-    <!-- ── test profile — console only, reduce noise ─────────────────────── -->
+    <!-- ── test — quiet console only ─────────────────────────────────────── -->
     <springProfile name="test">
-        <logger name="net.javacrumbs.shedlock" level="INFO"/>
+        <logger name="net.javacrumbs.shedlock"        level="INFO"/>
         <logger name="org.springframework.scheduling" level="INFO"/>
         <root level="INFO">
             <appender-ref ref="CONSOLE"/>
         </root>
     </springProfile>
 
-    <!-- ── default (dev / prod) — console + rolling file ─────────────────── -->
+    <!-- ── prod / default — async file + error file + console ────────────── -->
     <springProfile name="!local &amp; !test">
         <root level="${LOG_LEVEL}">
             <appender-ref ref="CONSOLE"/>
-            <appender-ref ref="FILE"/>
+            <appender-ref ref="ASYNC_FILE"/>
+            <appender-ref ref="ERROR_FILE"/>
         </root>
     </springProfile>
 

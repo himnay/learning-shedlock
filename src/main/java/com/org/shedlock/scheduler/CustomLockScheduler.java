@@ -4,21 +4,19 @@ import com.org.shedlock.config.ShedlockProperties;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import net.javacrumbs.shedlock.core.LockConfiguration;
-import net.javacrumbs.shedlock.core.LockProvider;
-import net.javacrumbs.shedlock.core.SimpleLock;
+import net.javacrumbs.shedlock.core.LockingTaskExecutor;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
 import java.time.Instant;
-import java.util.Optional;
 
 /**
- * Demonstrates programmatic (manual) locking using LockProvider directly.
+ * Demonstrates programmatic locking via LockingTaskExecutor (fix 2).
  *
- * Use this approach when:
- *  - You need fine-grained control over lock acquisition and release.
- *  - You want to skip execution if the lock is unavailable (non-blocking tryLock).
- *  - The task must run in a different thread than the scheduler thread.
+ * LockingTaskExecutor vs raw LockProvider.lock():
+ *  - Handles unlock() automatically — no risk of forgetting the finally block.
+ *  - Integrates with LockingTaskExecutorListener (Micrometer metrics).
+ *  - Skips silently when lock is unavailable; metrics capture lock.not.acquired.
  *
  * GoF Factory Method Pattern: createLockConfiguration() encapsulates
  * LockConfiguration construction details.
@@ -28,26 +26,23 @@ import java.util.Optional;
 @RequiredArgsConstructor
 public class CustomLockScheduler {
 
-    private final LockProvider lockProvider;
+    private final LockingTaskExecutor lockingTaskExecutor;
     private final ShedlockProperties properties;
 
     @Scheduled(fixedRateString = "${shedlock.custom-lock.fixed-rate-ms:90000}")
     public void runWithProgrammaticLock() {
         ShedlockProperties.CustomLock config = properties.getCustomLock();
-        LockConfiguration lockConfig = createLockConfiguration(config);
-
-        Optional<SimpleLock> lock = lockProvider.lock(lockConfig);
-        if (lock.isEmpty()) {
-            log.debug("[{}] Lock not available — another node is running this task, skipping", config.getLockName());
-            return;
-        }
-
         try {
-            log.info("[{}] Acquired programmatic lock, executing task", config.getLockName());
-            executeBusinessLogic();
-            log.info("[{}] Task complete, releasing lock", config.getLockName());
-        } finally {
-            lock.get().unlock();
+            lockingTaskExecutor.executeWithLock(
+                    (LockingTaskExecutor.Task) this::executeBusinessLogic,
+                    createLockConfiguration(config)
+            );
+        } catch (Throwable ex) {
+            if (ex instanceof InterruptedException) {
+                Thread.currentThread().interrupt();
+                return;
+            }
+            log.error("[{}] Task execution failed", config.getLockName(), ex);
         }
     }
 
@@ -60,12 +55,9 @@ public class CustomLockScheduler {
         );
     }
 
-    private void executeBusinessLogic() {
-        try {
-            Thread.sleep(300);
-            log.info("Custom lock business logic executed successfully");
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-        }
+    private void executeBusinessLogic() throws InterruptedException {
+        log.info("[{}] Acquired lock, executing task", properties.getCustomLock().getLockName());
+        Thread.sleep(300);
+        log.info("[{}] Task complete", properties.getCustomLock().getLockName());
     }
 }

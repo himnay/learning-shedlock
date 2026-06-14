@@ -3,6 +3,9 @@ spring:
     name: learning-shedlock
   profiles:
     active: local
+  output:
+    ansi:
+      enabled: always   # fix 9: force ANSI colours — DETECT fails in IDEs and piped output
   threads:
     virtual:
       enabled: true

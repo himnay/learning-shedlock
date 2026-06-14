@@ -8,7 +8,7 @@ Production-grade Spring Boot demonstration of **ShedLock** — distributed sched
 |--------------------|-----------------------------------------------|
 | Java               | 25                                            |
 | Spring Boot        | 4.1.0 (via super-pom)                        |
-| ShedLock           | 6.9.2                                         |
+| ShedLock           | 7.7.0                                         |
 | Lock Provider      | JdbcTemplateLockProvider (PostgreSQL)         |
 | Database           | PostgreSQL 16                                 |
 | Migrations         | Flyway                                        |
@@ -146,6 +146,73 @@ docker-compose up -d
 ```
 
 Tests use TestContainers to spin up a real PostgreSQL container — no manual setup required.
+
+---
+
+## ShedLock 7.7.0 Best Practices Applied
+
+### 1. `MicrometerLockingTaskExecutorListener` — Lock metrics via Micrometer
+Registered in `ShedlockConfig` and wired into `DefaultLockingTaskExecutor`. Publishes 5 meters per lock name to Prometheus:
+
+| Meter | Description |
+|-------|-------------|
+| `shedlock.lock.attempts` | Total acquisition attempts |
+| `shedlock.lock.acquired` | Successful acquisitions |
+| `shedlock.lock.not.acquired` | Skipped — lock already held |
+| `shedlock.execution.duration` | Time spent inside the locked task |
+| `shedlock.execution.active` | Currently running locked tasks |
+
+`registerMetricsFor()` pre-creates all gauges at startup so they appear in Prometheus before first execution.
+
+### 2. `LockingTaskExecutor` for programmatic locking
+`CustomLockScheduler` now uses `DefaultLockingTaskExecutor.executeWithLock()` instead of raw `LockProvider.lock()`. Unlock is guaranteed automatically — no risk of a missed `finally` block. Integrates with the Micrometer listener automatically.
+
+### 3. `LockExtender.extendActiveLock()` — Runtime lock extension
+`CleanupScheduler.performTask()` calls `LockExtender.extendActiveLock(Duration.ofMinutes(10), Duration.ZERO)` when a large dataset is detected at runtime. Use when the task itself knows it needs more time than initially estimated.
+
+```
+KeepAliveLockProvider  → automatic background renewal (set-and-forget)
+LockExtender           → manual call when runtime state demands more time
+```
+
+### 4. `@SchedulerLock` durations driven by properties
+All `@SchedulerLock` annotations use `${shedlock.<name>.lock-at-most-for}` Spring property placeholders. Durations are configured once in `application.yml` — no hardcoded values in annotations.
+
+### 5. `LockNames` constants
+`config/LockNames.java` centralises all lock name strings. Used in `ShedlockConfig`, `ShedlockInfoContributor`, and `SchedulerController` to prevent typos across multiple files. Annotations use property placeholders (`${shedlock.report.lock-name:reportScheduler}`) for the same reason.
+
+### 6. `lock_until` index
+`V2__add_shedlock_index.sql` adds `CREATE INDEX idx_shedlock_lock_until ON shedlock (lock_until)`. ShedLock filters expired locks on this column — without the index each query is a sequential scan.
+
+### 7. Explicit `AopMode.PROXY_METHOD`
+`@EnableSchedulerLock(mode = AopMode.PROXY_METHOD)` — states the AOP mode explicitly. Prevents silent failures if another AOP proxy (e.g. `@Transactional`) is added later and changes the proxy order.
+
+### 8. Integration tests for all schedulers
+
+| Test class | What it verifies |
+|-----------|-----------------|
+| `ReportSchedulerIT` | Lock record created, `LockAssert` in test mode |
+| `CleanupSchedulerIT` | Lock record created; `lock_until` in future (KeepAlive proof) |
+| `NotificationSchedulerIT` | Lock record created; `cron = "-"` disable pattern |
+| `CustomLockSchedulerIT` | Lock record created; **skips** when another node holds the lock |
+
+### 9. ANSI log colours (`spring.output.ansi.enabled: always`)
+`%clr(...)` in `logback-spring.xml` requires Spring Boot's `AnsiOutput`. Default mode is `DETECT` which fails in IDEs and piped output. Setting `always` forces colours on unconditionally.
+
+---
+
+## Maven Commands
+
+| Command | Description |
+|---------|-------------|
+| `./mvnw spring-boot:run` | Start the application |
+| `./mvnw test` | Run all tests (spins up PostgreSQL via TestContainers) |
+| `./mvnw clean install` | Clean build and install to local repository |
+| `./mvnw dependency:resolve` | Resolve and download all declared dependencies |
+| `./mvnw dependency:tree` | Print the full dependency tree |
+| `./mvnw flyway:info` | Show applied and pending migrations |
+| `./mvnw flyway:repair -Dflyway.url=jdbc:postgresql://localhost:5432/<db> -Dflyway.user=<user> -Dflyway.password=<pass>` | Fix checksum mismatches after a migration file is edited post-apply |
+| `./mvnw flyway:clean -Dflyway.url=jdbc:postgresql://localhost:5432/<db> -Dflyway.user=<user> -Dflyway.password=<pass>` | Drop all objects in the schema (dev only) |
 
 ---
 
