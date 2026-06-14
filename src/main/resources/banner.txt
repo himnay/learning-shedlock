@@ -1,0 +1,14 @@
+   _____ _              _ _               _
+  / ____| |            | | |             | |
+ | (___ | |__   ___  __| | |     ___  ___| | __
+  \___ \| '_ \ / _ \/ _` | |    / _ \/ __| |/ /
+  ____) | | | |  __/ (_| | |___|  __/ (__|   <
+ |_____/|_| |_|\___|\__,_|______\___|\___|_|\_\
+
+ :: Spring ShedLock ::      (v0.0.1-SNAPSHOT)
+ :: Spring Boot ::          (${spring-boot.version})
+ :: Java ::                 (${java.version})
+ :: Port ::                 8080
+ :: Profile ::              ${spring.profiles.active:default}
+
+ Distributed task locking — JDBC, KeepAlive, Programmatic, Cron

@@ -1,0 +1,23 @@
+spring:
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+
+shedlock:
+  report:
+    cron: "*/5 * * * * *"
+  cleanup:
+    fixed-rate-ms: 5000
+    lock-at-most-for: 30s
+    lock-at-least-for: 2s
+  notification:
+    cron: "*/10 * * * * *"
+  custom-lock:
+    fixed-rate-ms: 7000
+    lock-at-most-for: 30s
+    lock-at-least-for: 2s
+
+logging:
+  level:
+    com.org.shedlock: DEBUG
+    net.javacrumbs.shedlock: DEBUG

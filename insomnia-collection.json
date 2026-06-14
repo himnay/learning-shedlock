@@ -1,0 +1,114 @@
+{
+  "_type": "export",
+  "__export_format": 4,
+  "__export_date": "2026-06-14T00:00:00.000Z",
+  "__export_source": "insomnia.desktop.app",
+  "resources": [
+    {
+      "_id": "wrk_shedlock",
+      "_type": "workspace",
+      "name": "Learning ShedLock",
+      "description": "Spring Boot ShedLock distributed scheduler locking API"
+    },
+    {
+      "_id": "env_base",
+      "_type": "environment",
+      "parentId": "wrk_shedlock",
+      "name": "Base Environment",
+      "data": {
+        "baseUrl": "http://localhost:8080",
+        "actuatorUrl": "http://localhost:8080/actuator"
+      }
+    },
+    {
+      "_id": "fld_schedulers",
+      "_type": "request_group",
+      "parentId": "wrk_shedlock",
+      "name": "Schedulers"
+    },
+    {
+      "_id": "fld_actuator",
+      "_type": "request_group",
+      "parentId": "wrk_shedlock",
+      "name": "Actuator"
+    },
+    {
+      "_id": "req_get_schedulers",
+      "_type": "request",
+      "parentId": "fld_schedulers",
+      "name": "Get All Schedulers",
+      "method": "GET",
+      "url": "{{ _.baseUrl }}/api/v1/schedulers",
+      "headers": [
+        { "name": "Accept", "value": "application/json" }
+      ],
+      "description": "Returns metadata for all registered ShedLock schedulers"
+    },
+    {
+      "_id": "req_get_locks",
+      "_type": "request",
+      "parentId": "fld_schedulers",
+      "name": "Get Active Locks (shedlock table)",
+      "method": "GET",
+      "url": "{{ _.baseUrl }}/api/v1/schedulers/locks",
+      "headers": [
+        { "name": "Accept", "value": "application/json" }
+      ],
+      "description": "Reads the shedlock table — shows current lock state for all tasks"
+    },
+    {
+      "_id": "req_health",
+      "_type": "request",
+      "parentId": "fld_actuator",
+      "name": "Health",
+      "method": "GET",
+      "url": "{{ _.actuatorUrl }}/health",
+      "description": "Spring Boot health check"
+    },
+    {
+      "_id": "req_info",
+      "_type": "request",
+      "parentId": "fld_actuator",
+      "name": "Info (includes ShedLock state)",
+      "method": "GET",
+      "url": "{{ _.actuatorUrl }}/info",
+      "description": "Returns app info + ShedlockInfoContributor data (lock count, lock records)"
+    },
+    {
+      "_id": "req_metrics",
+      "_type": "request",
+      "parentId": "fld_actuator",
+      "name": "Metrics",
+      "method": "GET",
+      "url": "{{ _.actuatorUrl }}/metrics",
+      "description": "All Micrometer metrics"
+    },
+    {
+      "_id": "req_prometheus",
+      "_type": "request",
+      "parentId": "fld_actuator",
+      "name": "Prometheus Metrics",
+      "method": "GET",
+      "url": "{{ _.actuatorUrl }}/prometheus",
+      "description": "Prometheus-format metrics (scraped by Prometheus at http://localhost:9091)"
+    },
+    {
+      "_id": "req_scheduled_tasks",
+      "_type": "request",
+      "parentId": "fld_actuator",
+      "name": "Scheduled Tasks",
+      "method": "GET",
+      "url": "{{ _.actuatorUrl }}/scheduledtasks",
+      "description": "Lists all @Scheduled tasks registered in the context"
+    },
+    {
+      "_id": "req_scheduler_metrics_report",
+      "_type": "request",
+      "parentId": "fld_actuator",
+      "name": "HTTP Request Metrics",
+      "method": "GET",
+      "url": "{{ _.actuatorUrl }}/metrics/http.server.requests",
+      "description": "HTTP request metrics with SLO histogram"
+    }
+  ]
+}
