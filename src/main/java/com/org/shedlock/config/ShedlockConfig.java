@@ -6,7 +6,6 @@ import net.javacrumbs.shedlock.core.LockingTaskExecutor;
 import net.javacrumbs.shedlock.core.LockProvider;
 import net.javacrumbs.shedlock.micrometer.MicrometerLockingTaskExecutorListener;
 import net.javacrumbs.shedlock.provider.jdbctemplate.JdbcTemplateLockProvider;
-import net.javacrumbs.shedlock.spring.annotation.AopMode;
 import net.javacrumbs.shedlock.spring.annotation.EnableSchedulerLock;
 import net.javacrumbs.shedlock.support.KeepAliveLockProvider;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -23,7 +22,7 @@ import java.util.concurrent.Executors;
 @EnableSchedulerLock(
         defaultLockAtMostFor = "${shedlock.default-lock-at-most-for:30s}",
         defaultLockAtLeastFor = "${shedlock.default-lock-at-least-for:10s}",
-        mode = AopMode.PROXY_METHOD   // fix 7: explicit — prevents silent breakage if AOP order changes
+        interceptMode = EnableSchedulerLock.InterceptMode.PROXY_METHOD   // fix 7: explicit — prevents silent breakage if AOP order changes
 )
 @EnableConfigurationProperties(ShedlockProperties.class)
 public class ShedlockConfig {

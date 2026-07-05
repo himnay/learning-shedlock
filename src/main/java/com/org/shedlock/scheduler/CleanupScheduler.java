@@ -2,7 +2,7 @@ package com.org.shedlock.scheduler;
 
 import com.org.shedlock.scheduler.base.AbstractScheduler;
 import lombok.extern.slf4j.Slf4j;
-import net.javacrumbs.shedlock.spring.aop.LockExtender;
+import net.javacrumbs.shedlock.core.LockExtender;
 import net.javacrumbs.shedlock.spring.annotation.LockProviderToUse;
 import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
 import org.springframework.scheduling.annotation.Scheduled;
