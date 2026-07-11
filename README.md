@@ -5,14 +5,15 @@
 ## Table of contents
 
 1. [Stack](#stack)
-2. [ShedLock Concepts Demonstrated](#shedlock-concepts-demonstrated)
-3. [Design Patterns](#design-patterns)
-4. [ShedLock Table](#shedlock-table)
-5. [Quick Start](#quick-start)
-6. [Running Tests](#running-tests)
-7. [ShedLock 7.7.0 Best Practices Applied](#shedlock-770-best-practices-applied)
-8. [Maven Commands](#maven-commands)
-9. [Key ShedLock Notes](#key-shedlock-notes)
+2. [Why distributed locking?](#why-distributed-locking)
+3. [ShedLock Concepts Demonstrated](#shedlock-concepts-demonstrated)
+4. [Design Patterns](#design-patterns)
+5. [ShedLock Table](#shedlock-table)
+6. [Quick Start](#quick-start)
+7. [Running Tests](#running-tests)
+8. [ShedLock 7.7.0 Best Practices Applied](#shedlock-770-best-practices-applied)
+9. [Maven Commands](#maven-commands)
+10. [Key ShedLock Notes](#key-shedlock-notes)
 
 Production-grade Spring Boot demonstration of **ShedLock** — distributed scheduler locking with JDBC/PostgreSQL, KeepAlive, programmatic locking, Flyway, Prometheus, and TestContainers.
 
@@ -31,6 +32,22 @@ Production-grade Spring Boot demonstration of **ShedLock** — distributed sched
 | Build              | Maven 3.9+                                    |
 
 ---
+
+## Why distributed locking?
+
+![Distributed lock: the problem and the solution](image/distributed-lock-problem-solution.png)
+
+Run the same scheduled job on three instances of a service and every cron tick fires **three
+times** against the shared database — race conditions, double-processing, corrupted state
+(top half of the diagram). A **distributed lock manager** fixes it (bottom half): each
+instance asks for a named lock before doing the work; exactly one is granted it, the others
+skip or wait, and releasing the lock lets the next waiter proceed.
+
+ShedLock is precisely this pattern specialized for schedulers: the lock lives in a store you
+already have (JDBC table here; Redis, Mongo, ZooKeeper also supported), `lockAtMostFor`
+bounds the lock if the holder dies, and `lockAtLeastFor` suppresses double-fires from clock
+drift. Note ShedLock is a *scheduler* lock, not a general mutual-exclusion primitive — it
+makes no fairness or queuing guarantees like a full lock manager.
 
 ## ShedLock Concepts Demonstrated
 
