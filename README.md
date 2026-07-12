@@ -4,16 +4,16 @@
 
 ## Table of contents
 
-1. [Stack](#stack)
-2. [Why distributed locking?](#why-distributed-locking)
-3. [ShedLock Concepts Demonstrated](#shedlock-concepts-demonstrated)
-4. [Design Patterns](#design-patterns)
-5. [ShedLock Table](#shedlock-table)
-6. [Quick Start](#quick-start)
-7. [Running Tests](#running-tests)
-8. [ShedLock 7.7.0 Best Practices Applied](#shedlock-770-best-practices-applied)
-9. [Maven Commands](#maven-commands)
-10. [Key ShedLock Notes](#key-shedlock-notes)
+1. 🧰 [Stack](#stack)
+2. ⏰ [Why distributed locking?](#why-distributed-locking)
+3. ⏰ [ShedLock Concepts Demonstrated](#shedlock-concepts-demonstrated)
+4. 🏗️ [Design Patterns](#design-patterns)
+5. 🗄️ [ShedLock Table](#shedlock-table)
+6. 🚀 [Quick Start](#quick-start)
+7. 🧪 [Running Tests](#running-tests)
+8. ⏰ [ShedLock 7.7.0 Best Practices Applied](#shedlock-770-best-practices-applied)
+9. 🔨 [Maven Commands](#maven-commands)
+10. ⏰ [Key ShedLock Notes](#key-shedlock-notes)
 
 Production-grade Spring Boot demonstration of **ShedLock** — distributed scheduler locking with JDBC/PostgreSQL, KeepAlive, programmatic locking, Flyway, Prometheus, and TestContainers.
 
