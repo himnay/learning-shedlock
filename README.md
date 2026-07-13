@@ -17,7 +17,8 @@
 
 Production-grade Spring Boot demonstration of **ShedLock** — distributed scheduler locking with JDBC/PostgreSQL, KeepAlive, programmatic locking, Flyway, Prometheus, and TestContainers.
 
-## Stack
+<a id="stack"></a>
+## 1. 🧰 Stack
 
 | Component          | Version / Detail                              |
 |--------------------|-----------------------------------------------|
@@ -33,7 +34,8 @@ Production-grade Spring Boot demonstration of **ShedLock** — distributed sched
 
 ---
 
-## Why distributed locking?
+<a id="why-distributed-locking"></a>
+## 2. ⏰ Why distributed locking?
 
 ![Distributed lock: the problem and the solution](image/distributed-lock-problem-solution.png)
 
@@ -49,7 +51,8 @@ bounds the lock if the holder dies, and `lockAtLeastFor` suppresses double-fires
 drift. Note ShedLock is a *scheduler* lock, not a general mutual-exclusion primitive — it
 makes no fairness or queuing guarantees like a full lock manager.
 
-## ShedLock Concepts Demonstrated
+<a id="shedlock-concepts-demonstrated"></a>
+## 3. ⏰ ShedLock Concepts Demonstrated
 
 ### 1. Standard `@SchedulerLock` (ReportScheduler)
 ```java
@@ -120,7 +123,8 @@ Spring's default scheduler is single-threaded — custom pool allows parallel ta
 
 ---
 
-## Design Patterns
+<a id="design-patterns"></a>
+## 4. 🏗️ Design Patterns
 
 | Pattern         | Where Applied                                                              |
 |-----------------|----------------------------------------------------------------------------|
@@ -131,7 +135,8 @@ Spring's default scheduler is single-threaded — custom pool allows parallel ta
 
 ---
 
-## ShedLock Table
+<a id="shedlock-table"></a>
+## 5. 🗄️ ShedLock Table
 
 Created automatically by Flyway (`V1__create_shedlock_table.sql`):
 
@@ -146,7 +151,8 @@ CREATE TABLE shedlock (
 
 ---
 
-## Quick Start
+<a id="quick-start"></a>
+## 6. 🚀 Quick Start
 
 ### 1. Start infrastructure
 ```bash
@@ -170,7 +176,8 @@ docker-compose up -d
 
 ---
 
-## Running Tests
+<a id="running-tests"></a>
+## 7. 🧪 Running Tests
 
 ```bash
 ./mvnw test
@@ -180,7 +187,8 @@ Tests use TestContainers to spin up a real PostgreSQL container — no manual se
 
 ---
 
-## ShedLock 7.7.0 Best Practices Applied
+<a id="shedlock-770-best-practices-applied"></a>
+## 8. ⏰ ShedLock 7.7.0 Best Practices Applied
 
 ### 1. `MicrometerLockingTaskExecutorListener` — Lock metrics via Micrometer
 Registered in `ShedlockConfig` and wired into `DefaultLockingTaskExecutor`. Publishes 5 meters per lock name to Prometheus:
@@ -232,7 +240,8 @@ All `@SchedulerLock` annotations use `${shedlock.<name>.lock-at-most-for}` Sprin
 
 ---
 
-## Maven Commands
+<a id="maven-commands"></a>
+## 9. 🔨 Maven Commands
 
 | Command | Description |
 |---------|-------------|
@@ -247,7 +256,8 @@ All `@SchedulerLock` annotations use `${shedlock.<name>.lock-at-most-for}` Sprin
 
 ---
 
-## Key ShedLock Notes
+<a id="key-shedlock-notes"></a>
+## 10. ⏰ Key ShedLock Notes
 
 > **IMPORTANT**: If ShedLock fails to start (e.g. DB unavailable), **none of the schedulers will start** and no logs will be written. Always ensure the database is healthy before starting the application.
 
