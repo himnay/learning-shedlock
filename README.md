@@ -60,6 +60,7 @@ makes no fairness or queuing guarantees like a full lock manager.
 @SchedulerLock(name = "reportScheduler", lockAtMostFor = "30s", lockAtLeastFor = "10s")
 public void runReportGeneration() { ... }
 ```
+
 <ul>
 
 - Only one node executes per cron tick
@@ -73,6 +74,7 @@ public void runReportGeneration() { ... }
 @LockProviderToUse("keepAliveLockProvider")
 public void runDataCleanup() { ... }
 ```
+
 <ul>
 
 - `KeepAliveLockProvider` wraps `JdbcTemplateLockProvider` (GoF Decorator)
@@ -91,6 +93,7 @@ try {
     lock.get().unlock();
 }
 ```
+
 <ul>
 
 - Full control over lock acquisition and release
