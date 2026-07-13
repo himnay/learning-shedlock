@@ -60,8 +60,12 @@ makes no fairness or queuing guarantees like a full lock manager.
 @SchedulerLock(name = "reportScheduler", lockAtMostFor = "30s", lockAtLeastFor = "10s")
 public void runReportGeneration() { ... }
 ```
+<ul>
+
 - Only one node executes per cron tick
 - `LockAssert.assertLocked()` verifies lock ownership inside the task
+
+</ul>
 
 ### 2. KeepAliveLockProvider — Decorator Pattern (CleanupScheduler)
 ```java
@@ -69,9 +73,13 @@ public void runReportGeneration() { ... }
 @LockProviderToUse("keepAliveLockProvider")
 public void runDataCleanup() { ... }
 ```
+<ul>
+
 - `KeepAliveLockProvider` wraps `JdbcTemplateLockProvider` (GoF Decorator)
 - Refreshes the lock every `lockAtMostFor/2`, preventing premature expiry on long tasks
 - Requires `lockAtMostFor >= 30s`
+
+</ul>
 
 ### 3. Programmatic Locking (CustomLockScheduler)
 ```java
@@ -83,8 +91,12 @@ try {
     lock.get().unlock();
 }
 ```
+<ul>
+
 - Full control over lock acquisition and release
 - Non-blocking: skips execution if lock is unavailable
+
+</ul>
 
 ### 4. Cron Expressions (NotificationScheduler)
 ```
@@ -261,7 +273,11 @@ All `@SchedulerLock` annotations use `${shedlock.<name>.lock-at-most-for}` Sprin
 
 > **IMPORTANT**: If ShedLock fails to start (e.g. DB unavailable), **none of the schedulers will start** and no logs will be written. Always ensure the database is healthy before starting the application.
 
+<ul>
+
 - Locked by value format: `hostname:port` (auto-generated, unique per node)
 - `lockAtMostFor` is your safety net for crashed nodes
 - Use `usingDbTime()` in multi-AZ deployments where server clocks may drift
 - `@LockProviderToUse` selects a specific `LockProvider` bean when multiple are defined
+
+</ul>
