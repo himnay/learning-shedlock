@@ -47,7 +47,7 @@ management:
       probes:
         enabled: true
     info:
-      enabled: true
+      access: read-only
   info:
     git:
       mode: full
