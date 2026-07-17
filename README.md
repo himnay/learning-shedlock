@@ -20,17 +20,17 @@ Production-grade Spring Boot demonstration of **ShedLock** — distributed sched
 <a id="stack"></a>
 ## 1. 🧰 Stack
 
-| Component          | Version / Detail                              |
-|--------------------|-----------------------------------------------|
-| Java               | 25                                            |
-| Spring Boot        | 4.1.0 (via super-pom)                        |
-| ShedLock           | 7.7.0                                         |
-| Lock Provider      | JdbcTemplateLockProvider (PostgreSQL)         |
-| Database           | PostgreSQL 16                                 |
-| Migrations         | Flyway                                        |
-| Observability      | Micrometer + Prometheus + Grafana             |
-| Tests              | JUnit 5 + TestContainers + Awaitility         |
-| Build              | Maven 3.9+                                    |
+| Component     | Version / Detail                      |
+|---------------|---------------------------------------|
+| Java          | 25                                    |
+| Spring Boot   | 4.1.0 (via super-pom)                 |
+| ShedLock      | 7.7.0                                 |
+| Lock Provider | JdbcTemplateLockProvider (PostgreSQL) |
+| Database      | PostgreSQL 16                         |
+| Migrations    | Flyway                                |
+| Observability | Micrometer + Prometheus + Grafana     |
+| Tests         | JUnit 5 + TestContainers + Awaitility |
+| Build         | Maven 3.9+                            |
 
 ---
 
@@ -119,10 +119,10 @@ JdbcTemplateLockProvider.Configuration.builder()
 ```
 
 ### 6. lockAtMostFor vs lockAtLeastFor
-| Setting          | Purpose                                                        |
-|------------------|----------------------------------------------------------------|
-| `lockAtMostFor`  | Max lock hold time — prevents stuck locks if a node dies       |
-| `lockAtLeastFor` | Min lock hold time — prevents race on the same cron tick       |
+| Setting                | Purpose                                                          |
+|------------------------|------------------------------------------------------------------|
+| `lockAtMostFor`        | Max lock hold time — prevents stuck locks if a node dies         |
+| `lockAtLeastFor`       | Min lock hold time — prevents race on the same cron tick         |
 | `defaultLockAtMostFor` | @EnableSchedulerLock default applied when method doesn't specify |
 
 ### 7. Thread Pool for Schedulers
@@ -141,12 +141,12 @@ Spring's default scheduler is single-threaded — custom pool allows parallel ta
 <a id="design-patterns"></a>
 ## 4. 🏗️ Design Patterns
 
-| Pattern         | Where Applied                                                              |
-|-----------------|----------------------------------------------------------------------------|
+| Pattern         | Where Applied                                                                           |
+|-----------------|-----------------------------------------------------------------------------------------|
 | Template Method | `AbstractScheduler` — skeleton with `LockAssert` + timing, delegates to `performTask()` |
-| Decorator       | `KeepAliveLockProvider` wraps `JdbcTemplateLockProvider`                   |
-| Strategy        | `LockProvider` interface — swap JDBC / Redis / InMemory without changing callers |
-| Factory Method  | `createLockConfiguration()` in `CustomLockScheduler`                      |
+| Decorator       | `KeepAliveLockProvider` wraps `JdbcTemplateLockProvider`                                |
+| Strategy        | `LockProvider` interface — swap JDBC / Redis / InMemory without changing callers        |
+| Factory Method  | `createLockConfiguration()` in `CustomLockScheduler`                                    |
 
 ---
 
@@ -180,14 +180,14 @@ docker-compose up -d
 ```
 
 ### 3. Open dashboards
-| URL                         | Description               |
-|-----------------------------|---------------------------|
-| http://localhost:8080/actuator | Actuator endpoints      |
-| http://localhost:8080/actuator/info | ShedLock table state |
-| http://localhost:8080/api/v1/schedulers | Scheduler metadata |
-| http://localhost:8080/api/v1/schedulers/locks | Live lock records |
-| http://localhost:9091       | Prometheus                |
-| http://localhost:3001       | Grafana (admin/admin)     |
+| URL                                           | Description           |
+|-----------------------------------------------|-----------------------|
+| http://localhost:8080/actuator                | Actuator endpoints    |
+| http://localhost:8080/actuator/info           | ShedLock table state  |
+| http://localhost:8080/api/v1/schedulers       | Scheduler metadata    |
+| http://localhost:8080/api/v1/schedulers/locks | Live lock records     |
+| http://localhost:9091                         | Prometheus            |
+| http://localhost:3001                         | Grafana (admin/admin) |
 
 ---
 
@@ -208,13 +208,13 @@ Tests use TestContainers to spin up a real PostgreSQL container — no manual se
 ### 1. `MicrometerLockingTaskExecutorListener` — Lock metrics via Micrometer
 Registered in `ShedlockConfig` and wired into `DefaultLockingTaskExecutor`. Publishes 5 meters per lock name to Prometheus:
 
-| Meter | Description |
-|-------|-------------|
-| `shedlock.lock.attempts` | Total acquisition attempts |
-| `shedlock.lock.acquired` | Successful acquisitions |
-| `shedlock.lock.not.acquired` | Skipped — lock already held |
+| Meter                         | Description                       |
+|-------------------------------|-----------------------------------|
+| `shedlock.lock.attempts`      | Total acquisition attempts        |
+| `shedlock.lock.acquired`      | Successful acquisitions           |
+| `shedlock.lock.not.acquired`  | Skipped — lock already held       |
 | `shedlock.execution.duration` | Time spent inside the locked task |
-| `shedlock.execution.active` | Currently running locked tasks |
+| `shedlock.execution.active`   | Currently running locked tasks    |
 
 `registerMetricsFor()` pre-creates all gauges at startup so they appear in Prometheus before first execution.
 
@@ -243,12 +243,12 @@ All `@SchedulerLock` annotations use `${shedlock.<name>.lock-at-most-for}` Sprin
 
 ### 8. Integration tests for all schedulers
 
-| Test class | What it verifies |
-|-----------|-----------------|
-| `ReportSchedulerIT` | Lock record created, `LockAssert` in test mode |
-| `CleanupSchedulerIT` | Lock record created; `lock_until` in future (KeepAlive proof) |
-| `NotificationSchedulerIT` | Lock record created; `cron = "-"` disable pattern |
-| `CustomLockSchedulerIT` | Lock record created; **skips** when another node holds the lock |
+| Test class                | What it verifies                                                |
+|---------------------------|-----------------------------------------------------------------|
+| `ReportSchedulerIT`       | Lock record created, `LockAssert` in test mode                  |
+| `CleanupSchedulerIT`      | Lock record created; `lock_until` in future (KeepAlive proof)   |
+| `NotificationSchedulerIT` | Lock record created; `cron = "-"` disable pattern               |
+| `CustomLockSchedulerIT`   | Lock record created; **skips** when another node holds the lock |
 
 ### 9. ANSI log colours (`spring.output.ansi.enabled: always`)
 `%clr(...)` in `logback-spring.xml` requires Spring Boot's `AnsiOutput`. Default mode is `DETECT` which fails in IDEs and piped output. Setting `always` forces colours on unconditionally.
@@ -258,16 +258,16 @@ All `@SchedulerLock` annotations use `${shedlock.<name>.lock-at-most-for}` Sprin
 <a id="maven-commands"></a>
 ## 9. 🔨 Maven Commands
 
-| Command | Description |
-|---------|-------------|
-| `./mvnw spring-boot:run` | Start the application |
-| `./mvnw test` | Run all tests (spins up PostgreSQL via TestContainers) |
-| `./mvnw clean install` | Clean build and install to local repository |
-| `./mvnw dependency:resolve` | Resolve and download all declared dependencies |
-| `./mvnw dependency:tree` | Print the full dependency tree |
-| `./mvnw flyway:info` | Show applied and pending migrations |
+| Command                                                                                                                 | Description                                                         |
+|-------------------------------------------------------------------------------------------------------------------------|---------------------------------------------------------------------|
+| `./mvnw spring-boot:run`                                                                                                | Start the application                                               |
+| `./mvnw test`                                                                                                           | Run all tests (spins up PostgreSQL via TestContainers)              |
+| `./mvnw clean install`                                                                                                  | Clean build and install to local repository                         |
+| `./mvnw dependency:resolve`                                                                                             | Resolve and download all declared dependencies                      |
+| `./mvnw dependency:tree`                                                                                                | Print the full dependency tree                                      |
+| `./mvnw flyway:info`                                                                                                    | Show applied and pending migrations                                 |
 | `./mvnw flyway:repair -Dflyway.url=jdbc:postgresql://localhost:5432/<db> -Dflyway.user=<user> -Dflyway.password=<pass>` | Fix checksum mismatches after a migration file is edited post-apply |
-| `./mvnw flyway:clean -Dflyway.url=jdbc:postgresql://localhost:5432/<db> -Dflyway.user=<user> -Dflyway.password=<pass>` | Drop all objects in the schema (dev only) |
+| `./mvnw flyway:clean -Dflyway.url=jdbc:postgresql://localhost:5432/<db> -Dflyway.user=<user> -Dflyway.password=<pass>`  | Drop all objects in the schema (dev only)                           |
 
 ---
 
