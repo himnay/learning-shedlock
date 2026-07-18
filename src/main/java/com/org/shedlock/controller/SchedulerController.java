@@ -18,8 +18,8 @@ import java.util.Map;
  */
 @Slf4j
 @RestController
-@RequestMapping("/api/v1/schedulers")
 @RequiredArgsConstructor
+@RequestMapping("/api/v1/schedulers")
 public class SchedulerController {
 
     private final JdbcTemplate jdbcTemplate;
