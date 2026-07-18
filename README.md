@@ -39,6 +39,17 @@ Production-grade Spring Boot demonstration of **ShedLock** — distributed sched
 
 ![Distributed lock: the problem and the solution](image/distributed-lock-problem-solution.png)
 
+```mermaid
+flowchart LR
+    cron["@Scheduled fires<br/>on every instance"] --> i1[Instance 1]
+    cron --> i2[Instance 2]
+    cron --> i3[Instance 3]
+    i1 -->|"acquire row lock — WINS"| lock[("shedlock table<br/>PostgreSQL")]
+    i2 -->|"lock held — skips"| lock
+    i3 -->|"lock held — skips"| lock
+    i1 --> task["task runs exactly once<br/>(lockAtMostFor / lockAtLeastFor)"]
+```
+
 Run the same scheduled job on three instances of a service and every cron tick fires **three
 times** against the shared database — race conditions, double-processing, corrupted state
 (top half of the diagram). A **distributed lock manager** fixes it (bottom half): each
