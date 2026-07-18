@@ -29,6 +29,7 @@ public class CustomLockScheduler {
     private final LockingTaskExecutor lockingTaskExecutor;
     private final ShedlockProperties properties;
 
+    /** Runs with programmatic lock. */
     @Scheduled(fixedRateString = "${shedlock.custom-lock.fixed-rate-ms:90000}")
     public void runWithProgrammaticLock() {
         ShedlockProperties.CustomLock config = properties.getCustomLock();

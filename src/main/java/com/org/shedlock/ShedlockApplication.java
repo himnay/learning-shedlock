@@ -8,6 +8,7 @@ import org.springframework.scheduling.annotation.EnableScheduling;
 @SpringBootApplication
 class ShedlockApplication {
 
+    /** Application entry point. */
     public static void main(String[] args) {
         SpringApplication.run(ShedlockApplication.class, args);
     }

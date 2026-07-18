@@ -17,6 +17,7 @@ import org.springframework.util.StopWatch;
 @Slf4j
 public abstract class AbstractScheduler {
 
+    /** Executes scheduled task. */
     public void executeScheduledTask() {
         LockAssert.assertLocked();
 

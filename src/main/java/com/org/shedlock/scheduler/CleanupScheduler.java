@@ -26,6 +26,7 @@ import java.time.LocalDateTime;
 @Component
 public class CleanupScheduler extends AbstractScheduler {
 
+    /** Runs data cleanup. */
     @Scheduled(fixedRateString = "${shedlock.cleanup.fixed-rate-ms:60000}")
     @SchedulerLock(
             name = "${shedlock.cleanup.lock-name:cleanupScheduler}",

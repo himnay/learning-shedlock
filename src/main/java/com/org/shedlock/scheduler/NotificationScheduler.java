@@ -27,6 +27,7 @@ import java.time.LocalDateTime;
 @RequiredArgsConstructor
 public class NotificationScheduler {
 
+    /** Sends notifications. */
     @Scheduled(cron = "${shedlock.notification.cron:0 */2 * * * *}")
     @SchedulerLock(
             name = "${shedlock.notification.lock-name:notificationScheduler}",

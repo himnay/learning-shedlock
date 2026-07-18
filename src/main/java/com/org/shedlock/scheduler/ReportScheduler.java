@@ -23,6 +23,7 @@ import java.time.LocalDateTime;
 @Component
 public class ReportScheduler extends AbstractScheduler {
 
+    /** Runs report generation. */
     @Scheduled(cron = "${shedlock.report.cron:0 */1 * * * *}")
     @SchedulerLock(
             name = "${shedlock.report.lock-name:reportScheduler}",
