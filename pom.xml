@@ -20,8 +20,6 @@
         <java.version>25</java.version>
         <maven.compiler.release>${java.version}</maven.compiler.release>
 
-        <shedlock.version>7.7.0</shedlock.version>
-
         <maven-compiler-plugin.version>3.14.0</maven-compiler-plugin.version>
         <maven-surefire-plugin.version>3.5.3</maven-surefire-plugin.version>
     </properties>
@@ -44,17 +42,14 @@
         <dependency>
             <groupId>net.javacrumbs.shedlock</groupId>
             <artifactId>shedlock-spring</artifactId>
-            <version>${shedlock.version}</version>
         </dependency>
         <dependency>
             <groupId>net.javacrumbs.shedlock</groupId>
             <artifactId>shedlock-provider-jdbc-template</artifactId>
-            <version>${shedlock.version}</version>
         </dependency>
         <dependency>
             <groupId>net.javacrumbs.shedlock</groupId>
             <artifactId>shedlock-micrometer</artifactId>
-            <version>${shedlock.version}</version>
         </dependency>
 
         <dependency>
