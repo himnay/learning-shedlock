@@ -1,8 +1,8 @@
-# <span style="color:hsl(3,68%,44%)">Learning ShedLock</span>
+# <span style="color:hsl(3,80%,58%)">Learning ShedLock</span>
 
 <img src="image/shedlock-logo.png" alt="ShedLock (lukas-krecan)" width="80"/>
 
-## <span style="color:hsl(15,68%,44%)">Table of contents</span>
+## <span style="color:hsl(141,80%,58%)">Table of contents</span>
 
 1. 🧰 [Stack](#stack)
 2. ⏰ [Why distributed locking?](#why-distributed-locking)
@@ -18,7 +18,7 @@
 Production-grade Spring Boot demonstration of **ShedLock** — distributed scheduler locking with JDBC/PostgreSQL, KeepAlive, programmatic locking, Flyway, Prometheus, and TestContainers.
 
 <a id="stack"></a>
-## <span style="color:hsl(26,68%,44%)">1. 🧰 Stack</span>
+## <span style="color:hsl(278,80%,58%)">1. 🧰 Stack</span>
 
 | Component     | Version / Detail                      |
 |---------------|---------------------------------------|
@@ -35,7 +35,7 @@ Production-grade Spring Boot demonstration of **ShedLock** — distributed sched
 ---
 
 <a id="why-distributed-locking"></a>
-## <span style="color:hsl(38,68%,44%)">2. ⏰ Why distributed locking?</span>
+## <span style="color:hsl(56,80%,50%)">2. ⏰ Why distributed locking?</span>
 
 ![Distributed lock: the problem and the solution](image/distributed-lock-problem-solution.png)
 
@@ -63,9 +63,9 @@ drift. Note ShedLock is a *scheduler* lock, not a general mutual-exclusion primi
 makes no fairness or queuing guarantees like a full lock manager.
 
 <a id="shedlock-concepts-demonstrated"></a>
-## <span style="color:hsl(49,68%,32%)">3. ⏰ ShedLock Concepts Demonstrated</span>
+## <span style="color:hsl(193,80%,58%)">3. ⏰ ShedLock Concepts Demonstrated</span>
 
-### <span style="color:hsl(61,68%,32%)">1. Standard `@SchedulerLock` (ReportScheduler)</span>
+### <span style="color:hsl(331,80%,58%)">1. Standard `@SchedulerLock` (ReportScheduler)</span>
 ```java
 @Scheduled(cron = "0 */1 * * * *")
 @SchedulerLock(name = "reportScheduler", lockAtMostFor = "30s", lockAtLeastFor = "10s")
@@ -79,7 +79,7 @@ public void runReportGeneration() { ... }
 
 </ul>
 
-### <span style="color:hsl(73,68%,32%)">2. KeepAliveLockProvider — Decorator Pattern (CleanupScheduler)</span>
+### <span style="color:hsl(108,80%,58%)">2. KeepAliveLockProvider — Decorator Pattern (CleanupScheduler)</span>
 ```java
 @SchedulerLock(name = "cleanupScheduler", lockAtMostFor = "5m", lockAtLeastFor = "1m")
 @LockProviderToUse("keepAliveLockProvider")
@@ -94,7 +94,7 @@ public void runDataCleanup() { ... }
 
 </ul>
 
-### <span style="color:hsl(84,68%,32%)">3. Programmatic Locking (CustomLockScheduler)</span>
+### <span style="color:hsl(246,80%,58%)">3. Programmatic Locking (CustomLockScheduler)</span>
 ```java
 Optional<SimpleLock> lock = lockProvider.lock(lockConfig);
 if (lock.isEmpty()) return;  // another node holds it — skip
@@ -112,7 +112,7 @@ try {
 
 </ul>
 
-### <span style="color:hsl(96,68%,32%)">4. Cron Expressions (NotificationScheduler)</span>
+### <span style="color:hsl(23,80%,58%)">4. Cron Expressions (NotificationScheduler)</span>
 ```
 # Every 1 minute
 0 */1 * * * *
@@ -120,7 +120,7 @@ try {
 shedlock.notification.cron=-
 ```
 
-### <span style="color:hsl(108,68%,32%)">5. JdbcTemplateLockProvider Configuration</span>
+### <span style="color:hsl(161,80%,58%)">5. JdbcTemplateLockProvider Configuration</span>
 ```java
 JdbcTemplateLockProvider.Configuration.builder()
     .withJdbcTemplate(new JdbcTemplate(dataSource))
@@ -129,14 +129,14 @@ JdbcTemplateLockProvider.Configuration.builder()
     .build()
 ```
 
-### <span style="color:hsl(119,68%,32%)">6. lockAtMostFor vs lockAtLeastFor</span>
+### <span style="color:hsl(298,80%,58%)">6. lockAtMostFor vs lockAtLeastFor</span>
 | Setting                | Purpose                                                          |
 |------------------------|------------------------------------------------------------------|
 | `lockAtMostFor`        | Max lock hold time — prevents stuck locks if a node dies         |
 | `lockAtLeastFor`       | Min lock hold time — prevents race on the same cron tick         |
 | `defaultLockAtMostFor` | @EnableSchedulerLock default applied when method doesn't specify |
 
-### <span style="color:hsl(131,68%,32%)">7. Thread Pool for Schedulers</span>
+### <span style="color:hsl(76,80%,58%)">7. Thread Pool for Schedulers</span>
 ```java
 @Bean
 public ThreadPoolTaskScheduler taskScheduler() {
@@ -150,7 +150,7 @@ Spring's default scheduler is single-threaded — custom pool allows parallel ta
 ---
 
 <a id="design-patterns"></a>
-## <span style="color:hsl(142,68%,32%)">4. 🏗️ Design Patterns</span>
+## <span style="color:hsl(213,80%,58%)">4. 🏗️ Design Patterns</span>
 
 | Pattern         | Where Applied                                                                           |
 |-----------------|-----------------------------------------------------------------------------------------|
@@ -162,7 +162,7 @@ Spring's default scheduler is single-threaded — custom pool allows parallel ta
 ---
 
 <a id="shedlock-table"></a>
-## <span style="color:hsl(154,68%,36%)">5. 🗄️ ShedLock Table</span>
+## <span style="color:hsl(351,80%,58%)">5. 🗄️ ShedLock Table</span>
 
 Created automatically by Flyway (`V1__create_shedlock_table.sql`):
 
@@ -178,19 +178,19 @@ CREATE TABLE shedlock (
 ---
 
 <a id="quick-start"></a>
-## <span style="color:hsl(166,68%,36%)">6. 🚀 Quick Start</span>
+## <span style="color:hsl(128,80%,58%)">6. 🚀 Quick Start</span>
 
-### <span style="color:hsl(177,68%,36%)">1. Start infrastructure</span>
+### <span style="color:hsl(266,80%,58%)">1. Start infrastructure</span>
 ```bash
 docker-compose up -d
 ```
 
-### <span style="color:hsl(189,68%,36%)">2. Run the application</span>
+### <span style="color:hsl(43,80%,58%)">2. Run the application</span>
 ```bash
 ./mvnw spring-boot:run
 ```
 
-### <span style="color:hsl(200,68%,44%)">3. Open dashboards</span>
+### <span style="color:hsl(181,80%,58%)">3. Open dashboards</span>
 | URL                                           | Description           |
 |-----------------------------------------------|-----------------------|
 | http://localhost:8080/actuator                | Actuator endpoints    |
@@ -203,7 +203,7 @@ docker-compose up -d
 ---
 
 <a id="running-tests"></a>
-## <span style="color:hsl(212,68%,44%)">7. 🧪 Running Tests</span>
+## <span style="color:hsl(318,80%,58%)">7. 🧪 Running Tests</span>
 
 ```bash
 ./mvnw test
@@ -214,9 +214,9 @@ Tests use TestContainers to spin up a real PostgreSQL container — no manual se
 ---
 
 <a id="shedlock-770-best-practices-applied"></a>
-## <span style="color:hsl(224,68%,44%)">8. ⏰ ShedLock 7.7.0 Best Practices Applied</span>
+## <span style="color:hsl(96,80%,58%)">8. ⏰ ShedLock 7.7.0 Best Practices Applied</span>
 
-### <span style="color:hsl(235,68%,44%)">1. `MicrometerLockingTaskExecutorListener` — Lock metrics via Micrometer</span>
+### <span style="color:hsl(233,80%,58%)">1. `MicrometerLockingTaskExecutorListener` — Lock metrics via Micrometer</span>
 Registered in `ShedlockConfig` and wired into `DefaultLockingTaskExecutor`. Publishes 5 meters per lock name to Prometheus:
 
 | Meter                         | Description                       |
@@ -229,10 +229,10 @@ Registered in `ShedlockConfig` and wired into `DefaultLockingTaskExecutor`. Publ
 
 `registerMetricsFor()` pre-creates all gauges at startup so they appear in Prometheus before first execution.
 
-### <span style="color:hsl(247,68%,44%)">2. `LockingTaskExecutor` for programmatic locking</span>
+### <span style="color:hsl(11,80%,58%)">2. `LockingTaskExecutor` for programmatic locking</span>
 `CustomLockScheduler` now uses `DefaultLockingTaskExecutor.executeWithLock()` instead of raw `LockProvider.lock()`. Unlock is guaranteed automatically — no risk of a missed `finally` block. Integrates with the Micrometer listener automatically.
 
-### <span style="color:hsl(258,68%,44%)">3. `LockExtender.extendActiveLock()` — Runtime lock extension</span>
+### <span style="color:hsl(148,80%,58%)">3. `LockExtender.extendActiveLock()` — Runtime lock extension</span>
 `CleanupScheduler.performTask()` calls `LockExtender.extendActiveLock(Duration.ofMinutes(10), Duration.ZERO)` when a large dataset is detected at runtime. Use when the task itself knows it needs more time than initially estimated.
 
 ```
@@ -240,19 +240,19 @@ KeepAliveLockProvider  → automatic background renewal (set-and-forget)
 LockExtender           → manual call when runtime state demands more time
 ```
 
-### <span style="color:hsl(270,68%,44%)">4. `@SchedulerLock` durations driven by properties</span>
+### <span style="color:hsl(286,80%,58%)">4. `@SchedulerLock` durations driven by properties</span>
 All `@SchedulerLock` annotations use `${shedlock.<name>.lock-at-most-for}` Spring property placeholders. Durations are configured once in `application.yml` — no hardcoded values in annotations.
 
-### <span style="color:hsl(282,68%,44%)">5. `LockNames` constants</span>
+### <span style="color:hsl(63,80%,50%)">5. `LockNames` constants</span>
 `config/LockNames.java` centralises all lock name strings. Used in `ShedlockConfig`, `ShedlockInfoContributor`, and `SchedulerController` to prevent typos across multiple files. Annotations use property placeholders (`${shedlock.report.lock-name:reportScheduler}`) for the same reason.
 
-### <span style="color:hsl(293,68%,44%)">6. `lock_until` index</span>
+### <span style="color:hsl(201,80%,58%)">6. `lock_until` index</span>
 `V2__add_shedlock_index.sql` adds `CREATE INDEX idx_shedlock_lock_until ON shedlock (lock_until)`. ShedLock filters expired locks on this column — without the index each query is a sequential scan.
 
-### <span style="color:hsl(305,68%,44%)">7. Explicit `AopMode.PROXY_METHOD`</span>
+### <span style="color:hsl(338,80%,58%)">7. Explicit `AopMode.PROXY_METHOD`</span>
 `@EnableSchedulerLock(mode = AopMode.PROXY_METHOD)` — states the AOP mode explicitly. Prevents silent failures if another AOP proxy (e.g. `@Transactional`) is added later and changes the proxy order.
 
-### <span style="color:hsl(317,68%,44%)">8. Integration tests for all schedulers</span>
+### <span style="color:hsl(116,80%,58%)">8. Integration tests for all schedulers</span>
 
 | Test class                | What it verifies                                                |
 |---------------------------|-----------------------------------------------------------------|
@@ -261,13 +261,13 @@ All `@SchedulerLock` annotations use `${shedlock.<name>.lock-at-most-for}` Sprin
 | `NotificationSchedulerIT` | Lock record created; `cron = "-"` disable pattern               |
 | `CustomLockSchedulerIT`   | Lock record created; **skips** when another node holds the lock |
 
-### <span style="color:hsl(328,68%,44%)">9. ANSI log colours (`spring.output.ansi.enabled: always`)</span>
+### <span style="color:hsl(253,80%,58%)">9. ANSI log colours (`spring.output.ansi.enabled: always`)</span>
 `%clr(...)` in `logback-spring.xml` requires Spring Boot's `AnsiOutput`. Default mode is `DETECT` which fails in IDEs and piped output. Setting `always` forces colours on unconditionally.
 
 ---
 
 <a id="maven-commands"></a>
-## <span style="color:hsl(340,68%,44%)">9. 🔨 Maven Commands</span>
+## <span style="color:hsl(31,80%,58%)">9. 🔨 Maven Commands</span>
 
 | Command                                                                                                                 | Description                                                         |
 |-------------------------------------------------------------------------------------------------------------------------|---------------------------------------------------------------------|
@@ -283,7 +283,7 @@ All `@SchedulerLock` annotations use `${shedlock.<name>.lock-at-most-for}` Sprin
 ---
 
 <a id="key-shedlock-notes"></a>
-## <span style="color:hsl(351,68%,44%)">10. ⏰ Key ShedLock Notes</span>
+## <span style="color:hsl(168,80%,58%)">10. ⏰ Key ShedLock Notes</span>
 
 > **IMPORTANT**: If ShedLock fails to start (e.g. DB unavailable), **none of the schedulers will start** and no logs will be written. Always ensure the database is healthy before starting the application.
 
