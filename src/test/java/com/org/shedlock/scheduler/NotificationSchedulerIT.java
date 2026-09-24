@@ -1,18 +1,14 @@
 package com.org.shedlock.scheduler;
 
+import com.org.shedlock.support.AbstractPostgresIT;
+
 import org.awaitility.Awaitility;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.ActiveProfiles;
-import org.springframework.test.context.DynamicPropertyRegistry;
-import org.springframework.test.context.DynamicPropertySource;
-import org.testcontainers.containers.PostgreSQLContainer;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
 
 import java.util.List;
 import java.util.Map;
@@ -21,17 +17,9 @@ import java.util.concurrent.TimeUnit;
 import static org.assertj.core.api.Assertions.assertThat;
 
 @SpringBootTest
-@Testcontainers
 @ActiveProfiles("test")
 @DisplayName("NotificationScheduler Integration Tests")
-class NotificationSchedulerIT {
-
-    @Container
-    @ServiceConnection
-    static PostgreSQLContainer<?> postgres = new PostgreSQLContainer<>("postgres:16-alpine")
-            .withDatabaseName("shedlock_db")
-            .withUsername("shedlock")
-            .withPassword("shedlock");
+class NotificationSchedulerIT extends AbstractPostgresIT {
 
     @Autowired
     private JdbcTemplate jdbcTemplate;

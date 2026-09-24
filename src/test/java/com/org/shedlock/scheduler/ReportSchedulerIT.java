@@ -1,17 +1,15 @@
 package com.org.shedlock.scheduler;
 
+import com.org.shedlock.support.AbstractPostgresIT;
+
 import net.javacrumbs.shedlock.core.LockAssert;
 import org.awaitility.Awaitility;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.ActiveProfiles;
-import org.testcontainers.containers.PostgreSQLContainer;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
 
 import java.util.List;
 import java.util.Map;
@@ -29,17 +27,9 @@ import static org.assertj.core.api.Assertions.assertThatNoException;
  * to UPDATE, which finds 0 rows and silently fails to acquire the lock.
  */
 @SpringBootTest
-@Testcontainers
 @ActiveProfiles("test")
 @DisplayName("ShedLock Scheduler Integration Tests")
-class ReportSchedulerIT {
-
-    @Container
-    @ServiceConnection
-    static PostgreSQLContainer<?> postgres = new PostgreSQLContainer<>("postgres:16-alpine")
-            .withDatabaseName("shedlock_db")
-            .withUsername("shedlock")
-            .withPassword("shedlock");
+class ReportSchedulerIT extends AbstractPostgresIT {
 
     @Autowired
     private JdbcTemplate jdbcTemplate;

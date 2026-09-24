@@ -1,16 +1,14 @@
 package com.org.shedlock.scheduler;
 
+import com.org.shedlock.support.AbstractPostgresIT;
+
 import org.awaitility.Awaitility;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.ActiveProfiles;
-import org.testcontainers.containers.PostgreSQLContainer;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
 
 import java.sql.Timestamp;
 import java.time.Instant;
@@ -26,17 +24,9 @@ import static org.assertj.core.api.Assertions.assertThat;
  * by another node — the core non-blocking tryLock guarantee.
  */
 @SpringBootTest
-@Testcontainers
 @ActiveProfiles("test")
 @DisplayName("CustomLockScheduler Integration Tests")
-class CustomLockSchedulerIT {
-
-    @Container
-    @ServiceConnection
-    static PostgreSQLContainer<?> postgres = new PostgreSQLContainer<>("postgres:16-alpine")
-            .withDatabaseName("shedlock_db")
-            .withUsername("shedlock")
-            .withPassword("shedlock");
+class CustomLockSchedulerIT extends AbstractPostgresIT {
 
     @Autowired
     private JdbcTemplate jdbcTemplate;

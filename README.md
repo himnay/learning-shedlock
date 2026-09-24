@@ -11,11 +11,11 @@
 5. 🗄️ [ShedLock Table](#shedlock-table)
 6. 🚀 [Quick Start](#quick-start)
 7. 🧪 [Running Tests](#running-tests)
-8. ⏰ [ShedLock 7.7.0 Best Practices Applied](#shedlock-770-best-practices-applied)
+8. ⏰ [ShedLock 7.10 Best Practices Applied](#shedlock-710-best-practices-applied)
 9. 🔨 [Maven Commands](#maven-commands)
 10. ⏰ [Key ShedLock Notes](#key-shedlock-notes)
 
-Production-grade Spring Boot demonstration of **ShedLock** — distributed scheduler locking with JDBC/PostgreSQL, KeepAlive, programmatic locking, Flyway, Prometheus, and TestContainers.
+Production-grade Spring Boot demonstration of **ShedLock** — distributed scheduler locking with JDBC/PostgreSQL, KeepAlive, programmatic locking, Flyway, Prometheus, and Testcontainers.
 
 <a id="stack"></a>
 ## <span style="color:hsl(278,80%,58%)">1. 🧰 Stack</span>
@@ -23,13 +23,13 @@ Production-grade Spring Boot demonstration of **ShedLock** — distributed sched
 | Component     | Version / Detail                      |
 |---------------|---------------------------------------|
 | Java          | 25                                    |
-| Spring Boot   | 4.1.0 (via super-pom)                 |
-| ShedLock      | 7.7.0                                 |
+| Spring Boot   | 4.1.1 (via super-pom 1.1.0, as of 2026) |
+| ShedLock      | 7.10.1 (as of 2026)                   |
 | Lock Provider | JdbcTemplateLockProvider (PostgreSQL) |
 | Database      | PostgreSQL 16                         |
 | Migrations    | Flyway                                |
 | Observability | Micrometer + Prometheus + Grafana     |
-| Tests         | JUnit 5 + TestContainers + Awaitility |
+| Tests         | JUnit 6 + Testcontainers 2 + Awaitility |
 | Build         | Maven 3.9+                            |
 
 ---
@@ -187,7 +187,7 @@ docker-compose up -d
 
 ### <span style="color:hsl(43,80%,58%)">2. Run the application</span>
 ```bash
-./mvnw spring-boot:run
+mvn spring-boot:run
 ```
 
 ### <span style="color:hsl(181,80%,58%)">3. Open dashboards</span>
@@ -206,15 +206,15 @@ docker-compose up -d
 ## <span style="color:hsl(318,80%,58%)">7. 🧪 Running Tests</span>
 
 ```bash
-./mvnw test
+mvn verify   # `mvn test` runs only surefire; the *IT classes run in failsafe's integration-test phase
 ```
 
-Tests use TestContainers to spin up a real PostgreSQL container — no manual setup required.
+Tests use Testcontainers to spin up **one** PostgreSQL container shared by every test class (`support/AbstractPostgresIT`) — no manual setup required. A per-class `@Container` would be stopped while Spring's cached contexts (and their `@Scheduled` jobs) are still alive, which hangs JVM shutdown.
 
 ---
 
-<a id="shedlock-770-best-practices-applied"></a>
-## <span style="color:hsl(96,80%,58%)">8. ⏰ ShedLock 7.7.0 Best Practices Applied</span>
+<a id="shedlock-710-best-practices-applied"></a>
+## <span style="color:hsl(96,80%,58%)">8. ⏰ ShedLock 7.10 Best Practices Applied</span>
 
 ### <span style="color:hsl(233,80%,58%)">1. `MicrometerLockingTaskExecutorListener` — Lock metrics via Micrometer</span>
 Registered in `ShedlockConfig` and wired into `DefaultLockingTaskExecutor`. Publishes 5 meters per lock name to Prometheus:
@@ -249,8 +249,8 @@ All `@SchedulerLock` annotations use `${shedlock.<name>.lock-at-most-for}` Sprin
 ### <span style="color:hsl(201,80%,58%)">6. `lock_until` index</span>
 `V2__add_shedlock_index.sql` adds `CREATE INDEX idx_shedlock_lock_until ON shedlock (lock_until)`. ShedLock filters expired locks on this column — without the index each query is a sequential scan.
 
-### <span style="color:hsl(338,80%,58%)">7. Explicit `AopMode.PROXY_METHOD`</span>
-`@EnableSchedulerLock(mode = AopMode.PROXY_METHOD)` — states the AOP mode explicitly. Prevents silent failures if another AOP proxy (e.g. `@Transactional`) is added later and changes the proxy order.
+### <span style="color:hsl(338,80%,58%)">7. Explicit `InterceptMode.PROXY_METHOD`</span>
+`@EnableSchedulerLock(interceptMode = InterceptMode.PROXY_METHOD)` — states the AOP mode explicitly. Prevents silent failures if another AOP proxy (e.g. `@Transactional`) is added later and changes the proxy order.
 
 ### <span style="color:hsl(116,80%,58%)">8. Integration tests for all schedulers</span>
 
@@ -271,14 +271,14 @@ All `@SchedulerLock` annotations use `${shedlock.<name>.lock-at-most-for}` Sprin
 
 | Command                                                                                                                 | Description                                                         |
 |-------------------------------------------------------------------------------------------------------------------------|---------------------------------------------------------------------|
-| `./mvnw spring-boot:run`                                                                                                | Start the application                                               |
-| `./mvnw test`                                                                                                           | Run all tests (spins up PostgreSQL via TestContainers)              |
-| `./mvnw clean install`                                                                                                  | Clean build and install to local repository                         |
-| `./mvnw dependency:resolve`                                                                                             | Resolve and download all declared dependencies                      |
-| `./mvnw dependency:tree`                                                                                                | Print the full dependency tree                                      |
-| `./mvnw flyway:info`                                                                                                    | Show applied and pending migrations                                 |
-| `./mvnw flyway:repair -Dflyway.url=jdbc:postgresql://localhost:5432/<db> -Dflyway.user=<user> -Dflyway.password=<pass>` | Fix checksum mismatches after a migration file is edited post-apply |
-| `./mvnw flyway:clean -Dflyway.url=jdbc:postgresql://localhost:5432/<db> -Dflyway.user=<user> -Dflyway.password=<pass>`  | Drop all objects in the schema (dev only)                           |
+| `mvn spring-boot:run`                                                                                                | Start the application                                               |
+| `mvn verify`                                                                                                            | Run unit + integration tests (spins up PostgreSQL via Testcontainers) |
+| `mvn clean install`                                                                                                  | Clean build and install to local repository                         |
+| `mvn dependency:resolve`                                                                                             | Resolve and download all declared dependencies                      |
+| `mvn dependency:tree`                                                                                                | Print the full dependency tree                                      |
+| `mvn flyway:info`                                                                                                    | Show applied and pending migrations                                 |
+| `mvn flyway:repair -Dflyway.url=jdbc:postgresql://localhost:5432/<db> -Dflyway.user=<user> -Dflyway.password=<pass>` | Fix checksum mismatches after a migration file is edited post-apply |
+| `mvn flyway:clean -Dflyway.url=jdbc:postgresql://localhost:5432/<db> -Dflyway.user=<user> -Dflyway.password=<pass>`  | Drop all objects in the schema (dev only)                           |
 
 ---
 
