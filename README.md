@@ -1,7 +1,5 @@
 # <span style="color:hsl(3,80%,58%)">Learning ShedLock</span>
 
-<img src="image/shedlock-logo.png" alt="ShedLock (lukas-krecan)" width="80"/>
-
 ## <span style="color:hsl(141,80%,58%)">Table of contents</span>
 
 1. 🧰 [Stack](#stack)
@@ -23,7 +21,7 @@ Production-grade Spring Boot demonstration of **ShedLock** — distributed sched
 | Component     | Version / Detail                      |
 |---------------|---------------------------------------|
 | Java          | 25                                    |
-| Spring Boot   | 4.1.1 (via super-pom 1.1.0, as of 2026) |
+| Spring Boot   | 4.1.1 (via super-pom 1.1.3, as of 2026) |
 | ShedLock      | 7.10.1 (as of 2026)                   |
 | Lock Provider | JdbcTemplateLockProvider (PostgreSQL) |
 | Database      | PostgreSQL 16                         |
@@ -251,6 +249,12 @@ All `@SchedulerLock` annotations use `${shedlock.<name>.lock-at-most-for}` Sprin
 
 ### <span style="color:hsl(338,80%,58%)">7. Explicit `InterceptMode.PROXY_METHOD`</span>
 `@EnableSchedulerLock(interceptMode = InterceptMode.PROXY_METHOD)` — states the AOP mode explicitly. Prevents silent failures if another AOP proxy (e.g. `@Transactional`) is added later and changes the proxy order.
+
+<p align="center">
+  <img src="image/shedlock-method-proxy.png" alt="PROXY_METHOD: Spring scheduling hands a Runnable to the TaskScheduler, which calls the scheduled method through its AOP proxy, and the proxy runs it via executeIfNotLocked" width="700"/>
+</p>
+
+<p align="center"><sub>With <code>PROXY_METHOD</code> the lock is taken by an AOP proxy around the <code>@SchedulerLock</code> method itself, so the method is locked however it is invoked. Diagram: <a href="https://github.com/lukas-krecan/ShedLock#modes-of-spring-integration">ShedLock — Modes of Spring integration</a>, Apache-2.0.</sub></p>
 
 ### <span style="color:hsl(116,80%,58%)">8. Integration tests for all schedulers</span>
 
