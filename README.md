@@ -73,7 +73,7 @@ public void runReportGeneration() { ... }
 <ul>
 
 - Only one node executes per cron tick
-- `LockAssert.assertLocked()` verifies lock ownership inside the task
+- [`LockAssert.assertLocked()`][LockAssert] verifies lock ownership inside the task
 
 </ul>
 
@@ -86,7 +86,7 @@ public void runDataCleanup() { ... }
 
 <ul>
 
-- `KeepAliveLockProvider` wraps `JdbcTemplateLockProvider` (GoF Decorator)
+- [`KeepAliveLockProvider`][KeepAliveLockProvider] wraps [`JdbcTemplateLockProvider`][JdbcTemplateLockProvider] (GoF Decorator)
 - Refreshes the lock every `lockAtMostFor/2`, preventing premature expiry on long tasks
 - Requires `lockAtMostFor >= 30s`
 
@@ -150,12 +150,12 @@ Spring's default scheduler is single-threaded — custom pool allows parallel ta
 <a id="design-patterns"></a>
 ## <span style="color:hsl(213,80%,58%)">4. 🏗️ Design Patterns</span>
 
-| Pattern         | Where Applied                                                                           |
-|-----------------|-----------------------------------------------------------------------------------------|
-| Template Method | `AbstractScheduler` — skeleton with `LockAssert` + timing, delegates to `performTask()` |
-| Decorator       | `KeepAliveLockProvider` wraps `JdbcTemplateLockProvider`                                |
-| Strategy        | `LockProvider` interface — swap JDBC / Redis / InMemory without changing callers        |
-| Factory Method  | `createLockConfiguration()` in `CustomLockScheduler`                                    |
+| Pattern         | Where Applied                                                                                                 |
+|-----------------|---------------------------------------------------------------------------------------------------------------|
+| Template Method | `AbstractScheduler` — skeleton with [`LockAssert`][LockAssert] + timing, delegates to `performTask()`         |
+| Decorator       | [`KeepAliveLockProvider`][KeepAliveLockProvider] wraps [`JdbcTemplateLockProvider`][JdbcTemplateLockProvider] |
+| Strategy        | [`LockProvider`][LockProvider] interface — swap JDBC / Redis / InMemory without changing callers              |
+| Factory Method  | `createLockConfiguration()` in `CustomLockScheduler`                                                          |
 
 ---
 
@@ -207,7 +207,7 @@ mvn spring-boot:run
 mvn verify   # `mvn test` runs only surefire; the *IT classes run in failsafe's integration-test phase
 ```
 
-Tests use Testcontainers to spin up **one** PostgreSQL container shared by every test class (`support/AbstractPostgresIT`) — no manual setup required. A per-class `@Container` would be stopped while Spring's cached contexts (and their `@Scheduled` jobs) are still alive, which hangs JVM shutdown.
+Tests use Testcontainers to spin up **one** PostgreSQL container shared by every test class (`support/AbstractPostgresIT`) — no manual setup required. A per-class [`@Container`][Container] would be stopped while Spring's cached contexts (and their [`@Scheduled`][Scheduled] jobs) are still alive, which hangs JVM shutdown.
 
 ---
 
@@ -215,7 +215,7 @@ Tests use Testcontainers to spin up **one** PostgreSQL container shared by every
 ## <span style="color:hsl(96,80%,58%)">8. ⏰ ShedLock 7.10 Best Practices Applied</span>
 
 ### <span style="color:hsl(233,80%,58%)">1. `MicrometerLockingTaskExecutorListener` — Lock metrics via Micrometer</span>
-Registered in `ShedlockConfig` and wired into `DefaultLockingTaskExecutor`. Publishes 5 meters per lock name to Prometheus:
+Registered in `ShedlockConfig` and wired into [`DefaultLockingTaskExecutor`][DefaultLockingTaskExecutor]. Publishes 5 meters per lock name to Prometheus:
 
 | Meter                         | Description                       |
 |-------------------------------|-----------------------------------|
@@ -228,10 +228,10 @@ Registered in `ShedlockConfig` and wired into `DefaultLockingTaskExecutor`. Publ
 `registerMetricsFor()` pre-creates all gauges at startup so they appear in Prometheus before first execution.
 
 ### <span style="color:hsl(11,80%,58%)">2. `LockingTaskExecutor` for programmatic locking</span>
-`CustomLockScheduler` now uses `DefaultLockingTaskExecutor.executeWithLock()` instead of raw `LockProvider.lock()`. Unlock is guaranteed automatically — no risk of a missed `finally` block. Integrates with the Micrometer listener automatically.
+`CustomLockScheduler` now uses [`DefaultLockingTaskExecutor.executeWithLock()`][DefaultLockingTaskExecutor] instead of raw [`LockProvider.lock()`][LockProvider]. Unlock is guaranteed automatically — no risk of a missed `finally` block. Integrates with the Micrometer listener automatically.
 
 ### <span style="color:hsl(148,80%,58%)">3. `LockExtender.extendActiveLock()` — Runtime lock extension</span>
-`CleanupScheduler.performTask()` calls `LockExtender.extendActiveLock(Duration.ofMinutes(10), Duration.ZERO)` when a large dataset is detected at runtime. Use when the task itself knows it needs more time than initially estimated.
+`CleanupScheduler.performTask()` calls [`LockExtender.extendActiveLock(Duration.ofMinutes(10), Duration.ZERO)`][LockExtender] when a large dataset is detected at runtime. Use when the task itself knows it needs more time than initially estimated.
 
 ```
 KeepAliveLockProvider  → automatic background renewal (set-and-forget)
@@ -239,7 +239,7 @@ LockExtender           → manual call when runtime state demands more time
 ```
 
 ### <span style="color:hsl(286,80%,58%)">4. `@SchedulerLock` durations driven by properties</span>
-All `@SchedulerLock` annotations use `${shedlock.<name>.lock-at-most-for}` Spring property placeholders. Durations are configured once in `application.yml` — no hardcoded values in annotations.
+All [`@SchedulerLock`][SchedulerLock] annotations use `${shedlock.<name>.lock-at-most-for}` Spring property placeholders. Durations are configured once in `application.yml` — no hardcoded values in annotations.
 
 ### <span style="color:hsl(63,80%,50%)">5. `LockNames` constants</span>
 `config/LockNames.java` centralises all lock name strings. Used in `ShedlockConfig`, `ShedlockInfoContributor`, and `SchedulerController` to prevent typos across multiple files. Annotations use property placeholders (`${shedlock.report.lock-name:reportScheduler}`) for the same reason.
@@ -248,7 +248,7 @@ All `@SchedulerLock` annotations use `${shedlock.<name>.lock-at-most-for}` Sprin
 `V2__add_shedlock_index.sql` adds `CREATE INDEX idx_shedlock_lock_until ON shedlock (lock_until)`. ShedLock filters expired locks on this column — without the index each query is a sequential scan.
 
 ### <span style="color:hsl(338,80%,58%)">7. Explicit `InterceptMode.PROXY_METHOD`</span>
-`@EnableSchedulerLock(interceptMode = InterceptMode.PROXY_METHOD)` — states the AOP mode explicitly. Prevents silent failures if another AOP proxy (e.g. `@Transactional`) is added later and changes the proxy order.
+[`@EnableSchedulerLock(interceptMode = InterceptMode.PROXY_METHOD)`][EnableSchedulerLock] — states the AOP mode explicitly. Prevents silent failures if another AOP proxy (e.g. [`@Transactional`][Transactional]) is added later and changes the proxy order.
 
 <p align="center">
   <img src="image/shedlock-method-proxy.png" alt="PROXY_METHOD: Spring scheduling hands a Runnable to the TaskScheduler, which calls the scheduled method through its AOP proxy, and the proxy runs it via executeIfNotLocked" width="700"/>
@@ -260,13 +260,13 @@ All `@SchedulerLock` annotations use `${shedlock.<name>.lock-at-most-for}` Sprin
 
 | Test class                | What it verifies                                                |
 |---------------------------|-----------------------------------------------------------------|
-| `ReportSchedulerIT`       | Lock record created, `LockAssert` in test mode                  |
+| `ReportSchedulerIT`       | Lock record created, [`LockAssert`][LockAssert] in test mode    |
 | `CleanupSchedulerIT`      | Lock record created; `lock_until` in future (KeepAlive proof)   |
 | `NotificationSchedulerIT` | Lock record created; `cron = "-"` disable pattern               |
 | `CustomLockSchedulerIT`   | Lock record created; **skips** when another node holds the lock |
 
 ### <span style="color:hsl(253,80%,58%)">9. ANSI log colours (`spring.output.ansi.enabled: always`)</span>
-`%clr(...)` in `logback-spring.xml` requires Spring Boot's `AnsiOutput`. Default mode is `DETECT` which fails in IDEs and piped output. Setting `always` forces colours on unconditionally.
+`%clr(...)` in `logback-spring.xml` requires Spring Boot's [`AnsiOutput`][AnsiOutput]. Default mode is `DETECT` which fails in IDEs and piped output. Setting `always` forces colours on unconditionally.
 
 ---
 
@@ -296,6 +296,22 @@ All `@SchedulerLock` annotations use `${shedlock.<name>.lock-at-most-for}` Sprin
 - Locked by value format: `hostname:port` (auto-generated, unique per node)
 - `lockAtMostFor` is your safety net for crashed nodes
 - Use `usingDbTime()` in multi-AZ deployments where server clocks may drift
-- `@LockProviderToUse` selects a specific `LockProvider` bean when multiple are defined
+- [`@LockProviderToUse`][LockProviderToUse] selects a specific [`LockProvider`][LockProvider] bean when multiple are defined
 
 </ul>
+
+<!-- Library classes mentioned above, linked to their source at the versions this project builds with. -->
+
+[AnsiOutput]: https://github.com/spring-projects/spring-boot/blob/v4.1.1/core/spring-boot/src/main/java/org/springframework/boot/ansi/AnsiOutput.java
+[Container]: https://github.com/testcontainers/testcontainers-java/blob/2.0.5/modules/junit-jupiter/src/main/java/org/testcontainers/junit/jupiter/Container.java
+[DefaultLockingTaskExecutor]: https://github.com/lukas-krecan/ShedLock/blob/shedlock-parent-7.10.1/shedlock-core/src/main/java/net/javacrumbs/shedlock/core/DefaultLockingTaskExecutor.java
+[EnableSchedulerLock]: https://github.com/lukas-krecan/ShedLock/blob/shedlock-parent-7.10.1/spring/shedlock-spring/src/main/java/net/javacrumbs/shedlock/spring/annotation/EnableSchedulerLock.java
+[JdbcTemplateLockProvider]: https://github.com/lukas-krecan/ShedLock/blob/shedlock-parent-7.10.1/providers/jdbc/shedlock-provider-jdbc-template/src/main/java/net/javacrumbs/shedlock/provider/jdbctemplate/JdbcTemplateLockProvider.java
+[KeepAliveLockProvider]: https://github.com/lukas-krecan/ShedLock/blob/shedlock-parent-7.10.1/shedlock-core/src/main/java/net/javacrumbs/shedlock/support/KeepAliveLockProvider.java
+[LockAssert]: https://github.com/lukas-krecan/ShedLock/blob/shedlock-parent-7.10.1/shedlock-core/src/main/java/net/javacrumbs/shedlock/core/LockAssert.java
+[LockExtender]: https://github.com/lukas-krecan/ShedLock/blob/shedlock-parent-7.10.1/shedlock-core/src/main/java/net/javacrumbs/shedlock/core/LockExtender.java
+[LockProvider]: https://github.com/lukas-krecan/ShedLock/blob/shedlock-parent-7.10.1/shedlock-core/src/main/java/net/javacrumbs/shedlock/core/LockProvider.java
+[LockProviderToUse]: https://github.com/lukas-krecan/ShedLock/blob/shedlock-parent-7.10.1/spring/shedlock-spring/src/main/java/net/javacrumbs/shedlock/spring/annotation/LockProviderToUse.java
+[Scheduled]: https://github.com/spring-projects/spring-framework/blob/v7.0.9/spring-context/src/main/java/org/springframework/scheduling/annotation/Scheduled.java
+[SchedulerLock]: https://github.com/lukas-krecan/ShedLock/blob/shedlock-parent-7.10.1/spring/shedlock-spring/src/main/java/net/javacrumbs/shedlock/spring/annotation/SchedulerLock.java
+[Transactional]: https://github.com/spring-projects/spring-framework/blob/v7.0.9/spring-tx/src/main/java/org/springframework/transaction/annotation/Transactional.java
