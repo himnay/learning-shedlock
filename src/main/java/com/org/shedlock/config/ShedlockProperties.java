@@ -19,8 +19,6 @@ public class ShedlockProperties {
     @NotNull
     private Duration defaultLockAtLeastFor = Duration.ofSeconds(10);
 
-    private boolean keepAliveEnabled = true;
-
     @Valid
     private Report report = new Report();
 
@@ -55,7 +53,6 @@ public class ShedlockProperties {
         private Duration lockAtMostFor = Duration.ofSeconds(30);
         private Duration lockAtLeastFor = Duration.ofSeconds(10);
         private String cron = "0 */2 * * * *";
-        private boolean enabled = true;
     }
 
     @Data

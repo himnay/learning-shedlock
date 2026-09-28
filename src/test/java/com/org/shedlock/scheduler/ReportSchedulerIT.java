@@ -2,6 +2,8 @@ package com.org.shedlock.scheduler;
 
 import com.org.shedlock.support.AbstractPostgresIT;
 
+import io.micrometer.core.instrument.Counter;
+import io.micrometer.core.instrument.MeterRegistry;
 import net.javacrumbs.shedlock.core.LockAssert;
 import org.awaitility.Awaitility;
 import org.junit.jupiter.api.DisplayName;
@@ -34,6 +36,9 @@ class ReportSchedulerIT extends AbstractPostgresIT {
     @Autowired
     private JdbcTemplate jdbcTemplate;
 
+    @Autowired
+    private MeterRegistry meterRegistry;
+
     @Test
     @DisplayName("Shedlock table is created by Flyway migration")
     void shedlockTableExists() {
@@ -42,6 +47,30 @@ class ReportSchedulerIT extends AbstractPostgresIT {
                 Integer.class
         );
         assertThat(count).isEqualTo(1);
+    }
+
+    @Test
+    @DisplayName("Only the primary key indexes the shedlock table (V3 drops V2's lock_until index)")
+    void shedlockTableHasOnlyThePrimaryKeyIndex() {
+        List<String> indexes = jdbcTemplate.queryForList(
+                "SELECT indexname FROM pg_indexes WHERE tablename = 'shedlock'", String.class
+        );
+        assertThat(indexes).containsExactly("pk_shedlock");
+    }
+
+    @Test
+    @DisplayName("@SchedulerLock runs are counted by the Micrometer listener")
+    void annotatedSchedulerPublishesLockMetrics() {
+        Awaitility.await()
+                .atMost(20, TimeUnit.SECONDS)
+                .pollInterval(500, TimeUnit.MILLISECONDS)
+                .untilAsserted(() -> {
+                    Counter acquired = meterRegistry.find("shedlock.lock.acquired")
+                            .tag("lock.name", "reportScheduler")
+                            .counter();
+                    assertThat(acquired).isNotNull();
+                    assertThat(acquired.count()).isPositive();
+                });
     }
 
     @Test
@@ -78,8 +107,11 @@ class ReportSchedulerIT extends AbstractPostgresIT {
     @DisplayName("LockAssert.assertLocked() does not throw in test mode with TestHelper enabled")
     void lockAssertDoesNotThrowInTestMode() {
         LockAssert.TestHelper.makeAllAssertsPass(true);
-        assertThatNoException().isThrownBy(LockAssert::assertLocked);
-        LockAssert.TestHelper.makeAllAssertsPass(false);
+        try {
+            assertThatNoException().isThrownBy(LockAssert::assertLocked);
+        } finally {
+            LockAssert.TestHelper.makeAllAssertsPass(false);   // static flag: never leak it
+        }
     }
 
     @Test
@@ -95,8 +127,8 @@ class ReportSchedulerIT extends AbstractPostgresIT {
                     List<String> lockNames = locks.stream()
                             .map(r -> (String) r.get("name"))
                             .toList();
-                    assertThat(lockNames).containsAnyOf(
-                            "reportScheduler", "customLockScheduler", "cleanupScheduler"
+                    assertThat(lockNames).contains(
+                            "reportScheduler", "cleanupScheduler", "notificationScheduler", "customLockScheduler"
                     );
                 });
     }

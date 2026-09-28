@@ -10,9 +10,6 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.ActiveProfiles;
 
-import java.sql.Timestamp;
-import java.time.Instant;
-import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
@@ -49,20 +46,19 @@ class CustomLockSchedulerIT extends AbstractPostgresIT {
     @Test
     @DisplayName("CustomLockScheduler skips execution when lock is already held by another node")
     void skipsExecutionWhenLockAlreadyHeld() throws InterruptedException {
-        // Simulate another node holding the lock for 5 minutes
-        Timestamp lockUntil = Timestamp.from(Instant.now().plus(5, ChronoUnit.MINUTES));
-        Timestamp lockedAt  = Timestamp.from(Instant.now());
-
+        // Simulate another node holding the lock for 5 minutes, written the way ShedLock writes it
+        // with usingDbTime(): UTC wall-clock time from the database clock. A java.sql.Timestamp
+        // would be stored in the JVM's zone instead and, west of UTC, look expired already.
         jdbcTemplate.update(
                 """
                 INSERT INTO shedlock (name, lock_until, locked_at, locked_by)
-                VALUES (?, ?, ?, ?)
+                VALUES (?, timezone('utc', now()) + interval '5 minutes', timezone('utc', now()), ?)
                 ON CONFLICT (name) DO UPDATE
                   SET lock_until = EXCLUDED.lock_until,
                       locked_at  = EXCLUDED.locked_at,
                       locked_by  = EXCLUDED.locked_by
                 """,
-                "customLockScheduler", lockUntil, lockedAt, "other-node:8080"
+                "customLockScheduler", "other-node"
         );
 
         // Wait 2 scheduler cycles (fixed-rate = 7 s in test profile)
@@ -72,6 +68,6 @@ class CustomLockSchedulerIT extends AbstractPostgresIT {
         Map<String, Object> lock = jdbcTemplate.queryForMap(
                 "SELECT locked_by FROM shedlock WHERE name = 'customLockScheduler'"
         );
-        assertThat(lock.get("locked_by")).isEqualTo("other-node:8080");
+        assertThat(lock.get("locked_by")).isEqualTo("other-node");
     }
 }

@@ -71,7 +71,6 @@ management:
 shedlock:
   default-lock-at-most-for: 30s
   default-lock-at-least-for: 10s
-  keep-alive-enabled: true
   report:
     lock-name: reportScheduler
     cron: "0 */1 * * * *"
@@ -87,7 +86,6 @@ shedlock:
     cron: "0 */2 * * * *"
     lock-at-most-for: 30s
     lock-at-least-for: 10s
-    enabled: true
   custom-lock:
     lock-name: customLockScheduler
     fixed-rate-ms: 90000

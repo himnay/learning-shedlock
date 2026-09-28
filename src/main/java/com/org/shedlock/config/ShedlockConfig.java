@@ -17,6 +17,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
 
 import javax.sql.DataSource;
 import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
 
 @Configuration
 @EnableSchedulerLock(
@@ -44,20 +45,29 @@ public class ShedlockConfig {
     }
 
     /**
+     * Thread that renews KeepAlive locks. A bean of its own so the context shuts it down on close
+     * (devtools restarts, cached test contexts) instead of leaking one thread per context.
+     */
+    @Bean(destroyMethod = "shutdownNow")
+    public ScheduledExecutorService shedlockKeepAliveExecutor() {
+        return Executors.newSingleThreadScheduledExecutor(r -> {
+            Thread t = new Thread(r, "shedlock-keepalive");
+            t.setDaemon(true);
+            return t;
+        });
+    }
+
+    /**
      * GoF Decorator — refreshes the lock every lockAtMostFor/2 so long-running
      * tasks never lose it mid-flight. Requires lockAtMostFor >= 30 seconds.
+     * Its locks can't be extended by hand: LockExtender throws UnsupportedOperationException.
      */
     @Bean
     @Qualifier("keepAliveLockProvider")
-    public LockProvider keepAliveLockProvider(JdbcTemplateLockProvider jdbcLockProvider) {
-        return new KeepAliveLockProvider(
-                jdbcLockProvider,
-                Executors.newSingleThreadScheduledExecutor(r -> {
-                    Thread t = new Thread(r, "shedlock-keepalive");
-                    t.setDaemon(true);
-                    return t;
-                })
-        );
+    public LockProvider keepAliveLockProvider(
+            JdbcTemplateLockProvider jdbcLockProvider,
+            ScheduledExecutorService shedlockKeepAliveExecutor) {
+        return new KeepAliveLockProvider(jdbcLockProvider, shedlockKeepAliveExecutor);
     }
 
     /**
@@ -67,6 +77,9 @@ public class ShedlockConfig {
      *
      * registerMetricsFor() pre-creates gauges so they appear in Prometheus
      * from startup, even before the first execution.
+     *
+     * ShedLock's @SchedulerLock advisor looks up a LockingTaskExecutorListener bean as well, so
+     * this one listener measures the annotated schedulers and the programmatic executor below.
      */
     @Bean
     public MicrometerLockingTaskExecutorListener micrometerLockListener(MeterRegistry registry) {

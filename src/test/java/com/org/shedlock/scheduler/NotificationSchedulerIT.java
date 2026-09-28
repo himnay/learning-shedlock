@@ -40,20 +40,6 @@ class NotificationSchedulerIT extends AbstractPostgresIT {
     }
 
     @Test
-    @DisplayName("Notification scheduler is disabled when cron is set to '-'")
-    void notificationSchedulerIsDisabledByCron() {
-        // When cron = "-", Spring Boot skips registration entirely.
-        // We verify no lock record appears in a window longer than the cron interval.
-        // In the test profile, cron = "*/10 * * * * *" (10-second interval).
-        // By disabling via a separate property we confirm zero executions.
-        // This test documents the disable pattern; coverage via lack of new lock records.
-        List<Map<String, Object>> locks = jdbcTemplate.queryForList(
-                "SELECT name FROM shedlock WHERE name = 'disabledScheduler'"
-        );
-        assertThat(locks).isEmpty();
-    }
-
-    @Test
     @DisplayName("Notification lock_until is set after execution")
     void notificationLockUntilIsSet() {
         Awaitility.await()

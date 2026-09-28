@@ -8,6 +8,7 @@ import org.springframework.stereotype.Component;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 /**
  * Exposes ShedLock table state at /actuator/info.
@@ -21,9 +22,14 @@ public class ShedlockInfoContributor implements InfoContributor {
     @Override
     public void contribute(Info.Builder builder) {
         try {
-            List<Map<String, Object>> locks = jdbcTemplate.queryForList(
-                    "SELECT name, lock_until, locked_at, locked_by FROM shedlock ORDER BY name"
-            );
+            // AT TIME ZONE 'UTC': the columns hold UTC wall-clock time, see SchedulerController
+            List<Map<String, Object>> locks = jdbcTemplate.queryForList("""
+                    SELECT name,
+                           lock_until AT TIME ZONE 'UTC' AS lock_until,
+                           locked_at  AT TIME ZONE 'UTC' AS locked_at,
+                           locked_by
+                    FROM shedlock ORDER BY name
+                    """);
             builder.withDetail("shedlock", Map.of(
                     "tableExists", true,
                     "lockCount", locks.size(),
@@ -32,7 +38,7 @@ public class ShedlockInfoContributor implements InfoContributor {
         } catch (Exception ex) {
             builder.withDetail("shedlock", Map.of(
                     "tableExists", false,
-                    "error", ex.getMessage()
+                    "error", Objects.toString(ex.getMessage(), ex.getClass().getName())
             ));
         }
     }

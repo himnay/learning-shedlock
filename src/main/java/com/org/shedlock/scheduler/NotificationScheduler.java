@@ -17,8 +17,10 @@ import java.time.LocalDateTime;
  *   second minute hour day-of-month month day-of-week
  *
  * Disabling a cron job:
- *   - Set cron = "-"  (Spring Boot 2.1+)
- *   - Or set cron = "59 59 23 31 12 ? 2099"  (run far in the future)
+ *   - Set cron = "-" (Scheduled.CRON_DISABLED, Spring Framework 5.1+), e.g.
+ *     shedlock.notification.cron=- : the task is then never registered.
+ *   - Quartz-style tricks such as "59 59 23 31 12 ? 2099" don't work: Spring's cron takes
+ *     exactly 6 fields (no year) and fails at startup on a 7th.
  *
  * This scheduler does NOT extend AbstractScheduler to demonstrate inline LockAssert usage.
  */
@@ -43,14 +45,6 @@ public class NotificationScheduler {
         log.info("Notifications sent successfully");
     }
 
-    /**
-     * Disabled scheduler example — cron = "-" disables the job entirely.
-     * Activate by overriding: shedlock.notification.disabled-cron=-
-     *
-     *   @Scheduled(cron = "${shedlock.notification.disabled-cron:59 59 23 31 12 ? 2099}")
-     *   @SchedulerLock(name = "disabledScheduler")
-     *   public void disabledScheduler() { ... }
-     */
     private void processNotifications() {
         try {
             Thread.sleep(200);

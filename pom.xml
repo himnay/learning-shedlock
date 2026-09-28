@@ -120,6 +120,18 @@
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>
             </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-failsafe-plugin</artifactId>
+                <configuration>
+                    <environmentVariables>
+                        <!-- shedlock.lock_until holds UTC wall-clock time. Running the ITs in a zone
+                             west of UTC makes a JVM-time-zone mix-up fail on CI (which runs in UTC),
+                             not only on developer machines. -->
+                        <TZ>America/New_York</TZ>
+                    </environmentVariables>
+                </configuration>
+            </plugin>
         </plugins>
     </build>
 
