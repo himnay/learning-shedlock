@@ -16,6 +16,8 @@ out/
 
 ### Spring Boot ###
 HELP.md
+# logback-spring.xml's file appenders (any profile other than local/test)
+logs/
 
 ### OS ###
 .DS_Store

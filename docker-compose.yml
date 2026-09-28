@@ -26,6 +26,10 @@ services:
     container_name: shedlock-prometheus
     ports:
       - "9091:9090"
+    extra_hosts:
+      # prometheus.yml scrapes the app on the host via host.docker.internal: Docker Desktop
+      # resolves that name by itself, Docker Engine on Linux only with this mapping
+      - "host.docker.internal:host-gateway"
     volumes:
       - ./docker/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
     command:
