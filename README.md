@@ -18,17 +18,17 @@ Production-grade Spring Boot demonstration of **ShedLock** — distributed sched
 <a id="stack"></a>
 ## <span style="color:hsl(278,80%,58%)">1. 🧰 Stack</span>
 
-| Component     | Version / Detail                      |
-|---------------|---------------------------------------|
-| Java          | 25                                    |
-| Spring Boot   | 4.1.1 (via super-pom 1.1.3, as of 2026) |
-| ShedLock      | 7.10.1 (as of 2026)                   |
-| Lock Provider | JdbcTemplateLockProvider (PostgreSQL) |
-| Database      | PostgreSQL 16                         |
-| Migrations    | Flyway                                |
-| Observability | Micrometer + Prometheus + Grafana     |
-| Tests         | JUnit 6 + Testcontainers 2 + Awaitility |
-| Build         | Maven 3.9+                            |
+| Component     | Version / Detail                                         |
+|---------------|----------------------------------------------------------|
+| Java          | 27                                                       |
+| Spring Boot   | 4.1.1 (via super-pom 1.2.0, as of 2026)                  |
+| ShedLock      | 7.10.1 (as of 2026)                                      |
+| Lock Provider | JdbcTemplateLockProvider (PostgreSQL)                    |
+| Database      | PostgreSQL 19beta1 (Docker Compose), 18 (Testcontainers) |
+| Migrations    | Flyway                                                   |
+| Observability | Micrometer + Prometheus + Grafana                        |
+| Tests         | JUnit 6 + Testcontainers 2 + Awaitility                  |
+| Build         | Maven 3.9+                                               |
 
 ---
 
@@ -89,23 +89,20 @@ public void runDataCleanup() { ... }
 - [`KeepAliveLockProvider`][KeepAliveLockProvider] wraps [`JdbcTemplateLockProvider`][JdbcTemplateLockProvider] (GoF Decorator)
 - Refreshes the lock every `lockAtMostFor/2`, preventing premature expiry on long tasks
 - Requires `lockAtMostFor >= 30s`
+- Its locks can't be extended by hand: [`LockExtender`][LockExtender] throws [`UnsupportedOperationException`][UnsupportedOperationException] under it ([§8.3](#shedlock-710-best-practices-applied))
 
 </ul>
 
 ### <span style="color:hsl(246,80%,58%)">3. Programmatic Locking (CustomLockScheduler)</span>
 ```java
-Optional<SimpleLock> lock = lockProvider.lock(lockConfig);
-if (lock.isEmpty()) return;  // another node holds it — skip
-try {
-    executeBusinessLogic();
-} finally {
-    lock.get().unlock();
-}
+lockingTaskExecutor.executeWithLock(
+        (LockingTaskExecutor.Task) this::executeBusinessLogic,
+        new LockConfiguration(Instant.now(), "customLockScheduler", lockAtMostFor, lockAtLeastFor));
 ```
 
 <ul>
 
-- Full control over lock acquisition and release
+- [`LockingTaskExecutor`][LockingTaskExecutor] acquires the lock, runs the task and always releases it — no `finally` block to forget
 - Non-blocking: skips execution if lock is unavailable
 
 </ul>
@@ -117,6 +114,7 @@ try {
 # Disable a scheduler
 shedlock.notification.cron=-
 ```
+`-` is [`Scheduled.CRON_DISABLED`][Scheduled]: Spring never registers the task. Spring's cron has exactly six fields (no year), so Quartz-style far-future dates such as `59 59 23 31 12 ? 2099` fail at startup.
 
 ### <span style="color:hsl(161,80%,58%)">5. JdbcTemplateLockProvider Configuration</span>
 ```java
@@ -143,7 +141,7 @@ public ThreadPoolTaskScheduler taskScheduler() {
     return scheduler;
 }
 ```
-Spring's default scheduler is single-threaded — custom pool allows parallel task execution.
+Spring Boot's default scheduler is a [`ThreadPoolTaskScheduler`][ThreadPoolTaskScheduler] with one thread (`spring.task.scheduling.pool.size=1`), so one slow job delays the others. With `spring.threads.virtual.enabled: true`, as in this app's `application.yml`, Boot would use a [`SimpleAsyncTaskScheduler`][SimpleAsyncTaskScheduler] on virtual threads instead. Defining the `taskScheduler` bean replaces both: the jobs here run on five `shedlock-scheduler-*` threads.
 
 ---
 
@@ -169,9 +167,11 @@ CREATE TABLE shedlock (
     name       VARCHAR(64)  NOT NULL PRIMARY KEY,  -- scheduler name
     lock_until TIMESTAMP(3) NOT NULL,              -- when the lock expires
     locked_at  TIMESTAMP(3) NOT NULL,              -- when acquired
-    locked_by  VARCHAR(255) NOT NULL               -- hostname:port of the holder
+    locked_by  VARCHAR(255) NOT NULL               -- host name of the holder (ShedLock's default)
 );
 ```
+
+The primary key on `name` is the only index ShedLock needs: every statement it runs finds the row by name. `V2__add_shedlock_index.sql` once added an index on `lock_until`; `V3__drop_shedlock_lock_until_index.sql` drops it again ([§8.6](#shedlock-710-best-practices-applied)).
 
 ---
 
@@ -180,7 +180,7 @@ CREATE TABLE shedlock (
 
 ### <span style="color:hsl(266,80%,58%)">1. Start infrastructure</span>
 ```bash
-docker-compose up -d
+docker compose up -d
 ```
 
 ### <span style="color:hsl(43,80%,58%)">2. Run the application</span>
@@ -209,13 +209,15 @@ mvn verify   # `mvn test` runs only surefire; the *IT classes run in failsafe's 
 
 Tests use Testcontainers to spin up **one** PostgreSQL container shared by every test class (`support/AbstractPostgresIT`) — no manual setup required. A per-class [`@Container`][Container] would be stopped while Spring's cached contexts (and their [`@Scheduled`][Scheduled] jobs) are still alive, which hangs JVM shutdown.
 
+Failsafe runs the ITs with `TZ=America/New_York`. `lock_until` holds UTC wall-clock time, and a zone west of UTC makes any time-zone mix-up fail on CI, which runs in UTC, and not only on developer machines.
+
 ---
 
 <a id="shedlock-710-best-practices-applied"></a>
 ## <span style="color:hsl(96,80%,58%)">8. ⏰ ShedLock 7.10 Best Practices Applied</span>
 
 ### <span style="color:hsl(233,80%,58%)">1. `MicrometerLockingTaskExecutorListener` — Lock metrics via Micrometer</span>
-Registered in `ShedlockConfig` and wired into [`DefaultLockingTaskExecutor`][DefaultLockingTaskExecutor]. Publishes 5 meters per lock name to Prometheus:
+Registered in `ShedlockConfig` and wired into [`DefaultLockingTaskExecutor`][DefaultLockingTaskExecutor]. ShedLock's [`@SchedulerLock`][SchedulerLock] advisor picks up the same listener bean, so the annotated schedulers are measured too, not only the programmatic one. Publishes 5 meters per lock name to Prometheus:
 
 | Meter                         | Description                       |
 |-------------------------------|-----------------------------------|
@@ -231,21 +233,25 @@ Registered in `ShedlockConfig` and wired into [`DefaultLockingTaskExecutor`][Def
 `CustomLockScheduler` now uses [`DefaultLockingTaskExecutor.executeWithLock()`][DefaultLockingTaskExecutor] instead of raw [`LockProvider.lock()`][LockProvider]. Unlock is guaranteed automatically — no risk of a missed `finally` block. Integrates with the Micrometer listener automatically.
 
 ### <span style="color:hsl(148,80%,58%)">3. `LockExtender.extendActiveLock()` — Runtime lock extension</span>
-`CleanupScheduler.performTask()` calls [`LockExtender.extendActiveLock(Duration.ofMinutes(10), Duration.ZERO)`][LockExtender] when a large dataset is detected at runtime. Use when the task itself knows it needs more time than initially estimated.
+`ReportScheduler.performTask()` calls [`LockExtender.extendActiveLock(Duration.ofMinutes(10), Duration.ZERO)`][LockExtender] when a large report is detected at runtime. Use when the task itself knows it needs more time than initially estimated.
+
+It only works on locks that can be extended, such as the JDBC provider's. Under [`KeepAliveLockProvider`][KeepAliveLockProvider] it throws [`UnsupportedOperationException`][UnsupportedOperationException] ("Manual extension of KeepAliveLock is not supported"), so the KeepAlive-locked `CleanupScheduler` leaves the renewal to KeepAlive. `LockExtenderIT` shows both cases.
 
 ```
 KeepAliveLockProvider  → automatic background renewal (set-and-forget)
-LockExtender           → manual call when runtime state demands more time
+LockExtender           → manual call when runtime state demands more time (not under KeepAlive)
 ```
 
 ### <span style="color:hsl(286,80%,58%)">4. `@SchedulerLock` durations driven by properties</span>
-All [`@SchedulerLock`][SchedulerLock] annotations use `${shedlock.<name>.lock-at-most-for}` Spring property placeholders. Durations are configured once in `application.yml` — no hardcoded values in annotations.
+All `@SchedulerLock` annotations use `${shedlock.<name>.lock-at-most-for}` Spring property placeholders. Durations are configured once in `application.yml` — no hardcoded values in annotations.
 
 ### <span style="color:hsl(63,80%,50%)">5. `LockNames` constants</span>
-`config/LockNames.java` centralises all lock name strings. Used in `ShedlockConfig`, `ShedlockInfoContributor`, and `SchedulerController` to prevent typos across multiple files. Annotations use property placeholders (`${shedlock.report.lock-name:reportScheduler}`) for the same reason.
+`config/LockNames.java` holds the default lock names; `ShedlockConfig` uses them to pre-register the Micrometer meters. The annotations read the name from a property placeholder whose default is the same string (`${shedlock.report.lock-name:reportScheduler}`), and `SchedulerController` reports the configured names from `ShedlockProperties`.
 
-### <span style="color:hsl(201,80%,58%)">6. `lock_until` index</span>
-`V2__add_shedlock_index.sql` adds `CREATE INDEX idx_shedlock_lock_until ON shedlock (lock_until)`. ShedLock filters expired locks on this column — without the index each query is a sequential scan.
+### <span style="color:hsl(201,80%,58%)">6. No `lock_until` index</span>
+`V2__add_shedlock_index.sql` added `CREATE INDEX idx_shedlock_lock_until ON shedlock (lock_until)`, on the theory that ShedLock filters expired locks on this column. It doesn't need the index: every statement ShedLock runs (insert-on-conflict, update, extend, unlock) finds the row by `name`, the primary key, and only then compares `lock_until`.
+
+The index cost more than it saved. `lock_until` changes on every lock and unlock, and an index on a changed column rules out PostgreSQL's HOT (heap-only tuple) updates, so each update also wrote a new index entry and left more bloat behind. In a quick test on PostgreSQL 18, 0 of 500 `lock_until` updates were HOT with the index, and 496 of 500 without it. `V3__drop_shedlock_lock_until_index.sql` drops the index. V2 stays as it was, so Flyway's checksum still matches on databases that already applied it.
 
 ### <span style="color:hsl(338,80%,58%)">7. Explicit `InterceptMode.PROXY_METHOD`</span>
 [`@EnableSchedulerLock(interceptMode = InterceptMode.PROXY_METHOD)`][EnableSchedulerLock] — states the AOP mode explicitly. Prevents silent failures if another AOP proxy (e.g. [`@Transactional`][Transactional]) is added later and changes the proxy order.
@@ -258,12 +264,16 @@ All [`@SchedulerLock`][SchedulerLock] annotations use `${shedlock.<name>.lock-at
 
 ### <span style="color:hsl(116,80%,58%)">8. Integration tests for all schedulers</span>
 
-| Test class                | What it verifies                                                |
-|---------------------------|-----------------------------------------------------------------|
-| `ReportSchedulerIT`       | Lock record created, [`LockAssert`][LockAssert] in test mode    |
-| `CleanupSchedulerIT`      | Lock record created; `lock_until` in future (KeepAlive proof)   |
-| `NotificationSchedulerIT` | Lock record created; `cron = "-"` disable pattern               |
-| `CustomLockSchedulerIT`   | Lock record created; **skips** when another node holds the lock |
+| Test class                      | What it verifies                                                                                                   |
+|---------------------------------|--------------------------------------------------------------------------------------------------------------------|
+| `ReportSchedulerIT`             | Lock records created, [`LockAssert`][LockAssert] in test mode, only the primary-key index, Micrometer lock metrics |
+| `CleanupSchedulerIT`            | Lock record created; `lock_until` in future (KeepAlive proof)                                                      |
+| `NotificationSchedulerIT`       | Lock record created; `lock_until` set                                                                              |
+| `NotificationSchedulerCronTest` | `cron = "-"` leaves the job unregistered; a cron expression registers it                                           |
+| `CustomLockSchedulerIT`         | Lock record created; **skips** when another node holds the lock                                                    |
+| `LockExtenderIT`                | `LockExtender` extends a JDBC lock and is rejected under KeepAlive                                                 |
+| `SchedulerControllerIT`         | `/api/v1/schedulers` follows the configuration; lock times are the right instants                                  |
+| `ShedlockInfoContributorTest`   | `/actuator/info` copes with an exception that has no message                                                       |
 
 ### <span style="color:hsl(253,80%,58%)">9. ANSI log colours (`spring.output.ansi.enabled: always`)</span>
 `%clr(...)` in `logback-spring.xml` requires Spring Boot's [`AnsiOutput`][AnsiOutput]. Default mode is `DETECT` which fails in IDEs and piped output. Setting `always` forces colours on unconditionally.
@@ -273,27 +283,27 @@ All [`@SchedulerLock`][SchedulerLock] annotations use `${shedlock.<name>.lock-at
 <a id="maven-commands"></a>
 ## <span style="color:hsl(31,80%,58%)">9. 🔨 Maven Commands</span>
 
-| Command                                                                                                                 | Description                                                         |
-|-------------------------------------------------------------------------------------------------------------------------|---------------------------------------------------------------------|
-| `mvn spring-boot:run`                                                                                                | Start the application                                               |
-| `mvn verify`                                                                                                            | Run unit + integration tests (spins up PostgreSQL via Testcontainers) |
-| `mvn clean install`                                                                                                  | Clean build and install to local repository                         |
-| `mvn dependency:resolve`                                                                                             | Resolve and download all declared dependencies                      |
-| `mvn dependency:tree`                                                                                                | Print the full dependency tree                                      |
-| `mvn flyway:info`                                                                                                    | Show applied and pending migrations                                 |
-| `mvn flyway:repair -Dflyway.url=jdbc:postgresql://localhost:5432/<db> -Dflyway.user=<user> -Dflyway.password=<pass>` | Fix checksum mismatches after a migration file is edited post-apply |
-| `mvn flyway:clean -Dflyway.url=jdbc:postgresql://localhost:5432/<db> -Dflyway.user=<user> -Dflyway.password=<pass>`  | Drop all objects in the schema (dev only)                           |
+| Command                                                                                                                                                     | Description                                                                                    |
+|-------------------------------------------------------------------------------------------------------------------------------------------------------------|------------------------------------------------------------------------------------------------|
+| `mvn spring-boot:run`                                                                                                                                       | Start the application                                                                          |
+| `mvn verify`                                                                                                                                                | Run unit + integration tests (spins up PostgreSQL via Testcontainers)                          |
+| `mvn clean install`                                                                                                                                         | Clean build and install to local repository                                                    |
+| `mvn dependency:resolve`                                                                                                                                    | Resolve and download all declared dependencies                                                 |
+| `mvn dependency:tree`                                                                                                                                       | Print the full dependency tree                                                                 |
+| `mvn flyway:info -Dflyway.url=jdbc:postgresql://localhost:5433/shedlock_db -Dflyway.user=shedlock -Dflyway.password=shedlock`                               | Show applied and pending migrations (connection settings of the compose database)              |
+| `mvn flyway:repair -Dflyway.url=jdbc:postgresql://localhost:5433/shedlock_db -Dflyway.user=shedlock -Dflyway.password=shedlock`                             | Fix checksum mismatches after a migration file is edited post-apply                            |
+| `mvn flyway:clean -Dflyway.cleanDisabled=false -Dflyway.url=jdbc:postgresql://localhost:5433/shedlock_db -Dflyway.user=shedlock -Dflyway.password=shedlock` | Drop all objects in the schema (dev only; Flyway refuses `clean` unless `cleanDisabled=false`) |
 
 ---
 
 <a id="key-shedlock-notes"></a>
 ## <span style="color:hsl(168,80%,58%)">10. ⏰ Key ShedLock Notes</span>
 
-> **IMPORTANT**: If ShedLock fails to start (e.g. DB unavailable), **none of the schedulers will start** and no logs will be written. Always ensure the database is healthy before starting the application.
+> **IMPORTANT**: If the database is unreachable at startup, the Flyway migration fails and **the application doesn't start at all**, so start PostgreSQL first (`docker compose up -d`) and let its health check pass. If the database goes away while the app runs, each job's lock attempt fails: that run is skipped and logged, and the next tick tries again.
 
 <ul>
 
-- Locked by value format: `hostname:port` (auto-generated, unique per node)
+- `locked_by` defaults to the host name, so two instances on one machine write the same value; [`JdbcTemplateLockProvider.Configuration.builder().withLockedByValue(...)`][JdbcTemplateLockProvider] sets your own
 - `lockAtMostFor` is your safety net for crashed nodes
 - Use `usingDbTime()` in multi-AZ deployments where server clocks may drift
 - [`@LockProviderToUse`][LockProviderToUse] selects a specific [`LockProvider`][LockProvider] bean when multiple are defined
@@ -310,8 +320,12 @@ All [`@SchedulerLock`][SchedulerLock] annotations use `${shedlock.<name>.lock-at
 [KeepAliveLockProvider]: https://github.com/lukas-krecan/ShedLock/blob/shedlock-parent-7.10.1/shedlock-core/src/main/java/net/javacrumbs/shedlock/support/KeepAliveLockProvider.java
 [LockAssert]: https://github.com/lukas-krecan/ShedLock/blob/shedlock-parent-7.10.1/shedlock-core/src/main/java/net/javacrumbs/shedlock/core/LockAssert.java
 [LockExtender]: https://github.com/lukas-krecan/ShedLock/blob/shedlock-parent-7.10.1/shedlock-core/src/main/java/net/javacrumbs/shedlock/core/LockExtender.java
+[LockingTaskExecutor]: https://github.com/lukas-krecan/ShedLock/blob/shedlock-parent-7.10.1/shedlock-core/src/main/java/net/javacrumbs/shedlock/core/LockingTaskExecutor.java
 [LockProvider]: https://github.com/lukas-krecan/ShedLock/blob/shedlock-parent-7.10.1/shedlock-core/src/main/java/net/javacrumbs/shedlock/core/LockProvider.java
 [LockProviderToUse]: https://github.com/lukas-krecan/ShedLock/blob/shedlock-parent-7.10.1/spring/shedlock-spring/src/main/java/net/javacrumbs/shedlock/spring/annotation/LockProviderToUse.java
 [Scheduled]: https://github.com/spring-projects/spring-framework/blob/v7.0.9/spring-context/src/main/java/org/springframework/scheduling/annotation/Scheduled.java
 [SchedulerLock]: https://github.com/lukas-krecan/ShedLock/blob/shedlock-parent-7.10.1/spring/shedlock-spring/src/main/java/net/javacrumbs/shedlock/spring/annotation/SchedulerLock.java
+[SimpleAsyncTaskScheduler]: https://github.com/spring-projects/spring-framework/blob/v7.0.9/spring-context/src/main/java/org/springframework/scheduling/concurrent/SimpleAsyncTaskScheduler.java
+[ThreadPoolTaskScheduler]: https://github.com/spring-projects/spring-framework/blob/v7.0.9/spring-context/src/main/java/org/springframework/scheduling/concurrent/ThreadPoolTaskScheduler.java
 [Transactional]: https://github.com/spring-projects/spring-framework/blob/v7.0.9/spring-tx/src/main/java/org/springframework/transaction/annotation/Transactional.java
+[UnsupportedOperationException]: https://github.com/openjdk/jdk/blob/jdk-27-ga/src/java.base/share/classes/java/lang/UnsupportedOperationException.java
