@@ -1,3 +1,7 @@
+server:
+  port: 8080
+  shutdown: graceful
+
 spring:
   application:
     name: learning-shedlock
@@ -30,10 +34,6 @@ spring:
     baseline-version: 0
     baseline-description: initial
     table: flyway_schema_history
-
-server:
-  port: 8080
-  shutdown: graceful
 
 management:
   endpoints:
