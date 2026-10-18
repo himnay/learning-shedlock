@@ -29,13 +29,13 @@ import java.time.LocalDateTime;
 public class ReportScheduler extends AbstractScheduler {
 
     /** Runs report generation. */
+    @LockProviderToUse("jdbcLockProvider")
     @Scheduled(cron = "${shedlock.report.cron:0 */1 * * * *}")
     @SchedulerLock(
             name = "${shedlock.report.lock-name:reportScheduler}",
             lockAtMostFor = "${shedlock.report.lock-at-most-for:30s}",
             lockAtLeastFor = "${shedlock.report.lock-at-least-for:10s}"
     )
-    @LockProviderToUse("jdbcLockProvider")
     public void runReportGeneration() {
         executeScheduledTask();
     }

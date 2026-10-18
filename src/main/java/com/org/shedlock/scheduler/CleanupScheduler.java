@@ -25,13 +25,13 @@ import java.time.LocalDateTime;
 public class CleanupScheduler extends AbstractScheduler {
 
     /** Runs data cleanup. */
+    @LockProviderToUse("keepAliveLockProvider")
     @Scheduled(fixedRateString = "${shedlock.cleanup.fixed-rate-ms:60000}")
     @SchedulerLock(
             name = "${shedlock.cleanup.lock-name:cleanupScheduler}",
             lockAtMostFor = "${shedlock.cleanup.lock-at-most-for:5m}",
             lockAtLeastFor = "${shedlock.cleanup.lock-at-least-for:1m}"
     )
-    @LockProviderToUse("keepAliveLockProvider")
     public void runDataCleanup() {
         executeScheduledTask();
     }

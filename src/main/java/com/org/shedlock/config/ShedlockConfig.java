@@ -20,12 +20,12 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 
 @Configuration
+@EnableConfigurationProperties(ShedlockProperties.class)
 @EnableSchedulerLock(
         defaultLockAtMostFor = "${shedlock.default-lock-at-most-for:30s}",
         defaultLockAtLeastFor = "${shedlock.default-lock-at-least-for:10s}",
         interceptMode = EnableSchedulerLock.InterceptMode.PROXY_METHOD   // fix 7: explicit — prevents silent breakage if AOP order changes
 )
-@EnableConfigurationProperties(ShedlockProperties.class)
 public class ShedlockConfig {
 
     /**

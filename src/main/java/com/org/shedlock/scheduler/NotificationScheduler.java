@@ -30,13 +30,13 @@ import java.time.LocalDateTime;
 public class NotificationScheduler {
 
     /** Sends notifications. */
+    @LockProviderToUse("jdbcLockProvider")
     @Scheduled(cron = "${shedlock.notification.cron:0 */2 * * * *}")
     @SchedulerLock(
             name = "${shedlock.notification.lock-name:notificationScheduler}",
             lockAtMostFor = "${shedlock.notification.lock-at-most-for:30s}",
             lockAtLeastFor = "${shedlock.notification.lock-at-least-for:10s}"
     )
-    @LockProviderToUse("jdbcLockProvider")
     public void sendNotifications() {
         LockAssert.assertLocked();
 

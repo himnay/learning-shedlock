@@ -39,8 +39,8 @@ class NotificationSchedulerCronTest {
                                 .isEqualTo("0 */2 * * * *")));
     }
 
-    @Configuration(proxyBeanMethods = false)
     @EnableScheduling
+    @Configuration(proxyBeanMethods = false)
     static class SchedulingOnly {
     }
 }
